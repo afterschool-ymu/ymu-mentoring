@@ -150,7 +150,6 @@ function loadSites() {
    Apps Script has no modules, so that top-level const is visible here.
    ==================================================================== */
 
-if (typeof MENTORS_SEED === 'undefined') { var MENTORS_SEED = []; }
 
 function gradeToLevel_(grade) {
   return ['Alumni', '12th', '11th'].indexOf(String(grade)) >= 0 ? 'Advanced' : 'Intermediate';
@@ -160,7 +159,15 @@ function loadMentors() {
   const have = {};
   readTab_('Mentors').forEach(function (m) { have[m.name] = true; });
   let added = 0;
-  MENTORS_SEED.forEach(function (r) {
+  const seed = (typeof MENTORS_SEED !== 'undefined' && MENTORS_SEED) ? MENTORS_SEED : [];
+  if (!seed.length) {
+    notify_('No roster found.\n\n' +
+      'The ambassador list is deliberately not in the code. Paste your ' +
+      'private/Roster.gs into Apps Script as a SCRIPT file named "Roster", ' +
+      'then run this again.');
+    return;
+  }
+  seed.forEach(function (r) {
     if (have[r[0]]) return;
     appendRow_('Mentors', {
       mentor_id: uid_('mtr'), name: r[0], email: r[3], phone: r[2],
