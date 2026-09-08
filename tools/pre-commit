@@ -1,0 +1,45 @@
+#!/bin/sh
+# Refuses a commit that contains a real phone number or a personal email
+# address. The roster is minors and their parents; a public push cannot be
+# taken back, because forks and caches keep copies.
+#
+# Install:  ln -sf ../../tools/pre-commit .git/hooks/pre-commit
+# Bypass (only when you are certain):  git commit --no-verify
+
+fail=0
+
+# 555 numbers are the reserved fictional range, so they are allowed.
+phones=$(git diff --cached -U0 --diff-filter=ACM |
+         grep '^+' |
+         grep -nE '[0-9]{3}[-.][0-9]{3}[-.][0-9]{4}' |
+         grep -vE '555-[0-9]{4}')
+
+# example.com/org/net and the YMU domain itself are allowed.
+emails=$(git diff --cached -U0 --diff-filter=ACM |
+         grep '^+' |
+         grep -nEo '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}' |
+         grep -vE '@(example\.(com|org|net)|ymu\.org)')
+
+if [ -n "$phones" ]; then
+  echo "BLOCKED: a phone number is being committed."
+  echo "$phones" | sed 's/^/  /'
+  fail=1
+fi
+
+if [ -n "$emails" ]; then
+  echo "BLOCKED: a personal email address is being committed."
+  echo "$emails" | sed -E 's/^([^:]*:)?(..).*@/  \2***@/'
+  fail=1
+fi
+
+if [ "$fail" = 1 ]; then
+  cat <<'MSG'
+
+The roster belongs in private/Roster.gs, which .gitignore excludes.
+If this really is invented test data, use a 555 phone number and an
+@example.org address, or commit with --no-verify.
+MSG
+  exit 1
+fi
+
+exit 0
