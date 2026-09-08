@@ -105,6 +105,13 @@ git ls-files | xargs grep -lE "[0-9]{3}-[0-9]{3}-[0-9]{4}"
 
 That should print nothing.
 
+A pre-commit hook enforces this. Git does not clone hooks, so on a fresh
+checkout run once:
+
+```bash
+ln -sf ../../tools/pre-commit .git/hooks/pre-commit
+```
+
 ---
 
 ## Layout
