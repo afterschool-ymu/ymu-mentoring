@@ -140,9 +140,9 @@ docs/                 GitHub Pages site — static, no data
   mentor/             Forwards to the mentor page
   student/            Forwards to a student's page, or explains how to find their link
   preview/            Both screens, runnable offline, with invented people
-  matcher.html        The original standalone matching tool
 
-private/              NOT IN GIT. Your real roster.
+private/              NOT IN GIT. Your real roster, and the original
+                      standalone matcher (its HTML has the roster baked in).
 ```
 
 ---
