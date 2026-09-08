@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="referrer" content="no-referrer">
+<!-- Without this, forwarding to script.google.com would put the full URL,
+     token and all, into the Referer header of the outgoing request. -->
+<title>YMU Music Mentoring — Students &amp; Families</title>
+<style>
+  :root{--bg:#faf8f5;--panel:#fff;--ink:#1a1714;--muted:#6b6560;--line:#e8e2da;
+    --accent:#9a3412;--accent-soft:#fdf1e7}
+  @media (prefers-color-scheme:dark){:root{--bg:#171512;--panel:#211e1a;--ink:#f0ece7;
+    --muted:#a49a90;--line:#332e28;--accent:#fb923c;--accent-soft:#33231a}}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);min-height:100dvh;
+    display:grid;place-items:center;padding:24px;
+    font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    padding:28px 24px;max-width:440px;width:100%}
+  h1{font-size:19px;margin:0 0 6px;letter-spacing:-.02em;text-align:center}
+  p{color:var(--muted);font-size:14.5px;margin:0 0 16px}
+  .go{display:flex;align-items:center;justify-content:center;background:var(--accent);
+    color:#fff;text-decoration:none;font-weight:600;padding:14px 20px;border-radius:10px;
+    min-height:48px;width:100%;border:0;font-size:16px;cursor:pointer}
+  label{display:block;font-size:13px;font-weight:650;margin:18px 0 6px}
+  input{width:100%;font-size:16px;padding:13px 12px;border:1px solid var(--line);
+    border-radius:10px;background:var(--bg);color:var(--ink);min-height:48px}
+  input:focus{outline:2px solid var(--accent-soft);border-color:var(--accent)}
+  .or{text-align:center;color:var(--muted);font-size:12.5px;margin:18px 0 4px;
+    text-transform:uppercase;letter-spacing:.06em}
+  .ghost{background:transparent;color:var(--accent);border:1px solid var(--line)}
+  .small{font-size:13px;margin:18px 0 0;text-align:center}
+  .small a{color:var(--accent)}
+  .err{background:#fdecea;color:#b3261e;border-radius:10px;padding:14px;font-size:14px}
+  @media (prefers-color-scheme:dark){.err{background:#331c1a;color:#f2857c}}
+</style>
+</head>
+<body>
+<div class="card" id="c">
+  <h1>YMU Music Mentoring</h1>
+  <div id="body">
+    <p style="text-align:center">Opening your sessions…</p>
+  </div>
+  <p class="small">Need help? Email <a id="mail" href="#">the coordinator</a>.</p>
+</div>
+
+<script src="../config.js"></script>
+<script>
+(function () {
+  var cfg  = window.YMU || {};
+  var url  = (cfg.webAppUrl || '').trim();
+  var body = document.getElementById('body');
+
+  var mail = document.getElementById('mail');
+  mail.href = 'mailto:' + (cfg.coordinatorEmail || '');
+  mail.textContent = cfg.coordinatorEmail || 'YMU';
+
+  if (!/^https:\/\/script\.google\.com\/.*\/exec$/.test(url)) {
+    body.innerHTML = '<div class="err">This link is not finished being set up yet. ' +
+      'Please email us and we will send your booking link directly.</div>';
+    return;
+  }
+
+  // A student's link is personal: .../student/?token=XXXX
+  var token = new URLSearchParams(window.location.search).get('token');
+
+  if (token) {
+    var dest = url + '?token=' + encodeURIComponent(token);
+    body.innerHTML = '<p style="text-align:center">Opening your sessions…</p>' +
+      '<a class="go" href="' + dest.replace(/"/g, '&quot;') + '">Continue →</a>';
+    setTimeout(function () { window.location.replace(dest); }, 250);
+    return;
+  }
+
+  // No token: they typed the address, or forwarded a stripped link.
+  body.innerHTML =
+    '<p>Your booking link is personal to you, so it is not on this page. ' +
+    'Look for the email from YMU with the subject “Your booking link”, and open the ' +
+    'button inside it.</p>' +
+    '<label for="paste">Or paste your link here</label>' +
+    '<input id="paste" type="url" inputmode="url" autocomplete="off" ' +
+    'placeholder="https://…?token=…">' +
+    '<button class="go" id="open" style="margin-top:10px">Open my sessions →</button>' +
+    '<div class="or">or</div>' +
+    '<button class="go ghost" id="google">Sign in with Google instead</button>' +
+    '<p class="small" style="margin-top:10px">Google sign-in only works if YMU has your ' +
+    'Google address on file for the student or the parent.</p>';
+
+  document.getElementById('open').addEventListener('click', function () {
+    var v = document.getElementById('paste').value.trim();
+    var m = v.match(/[?&]token=([A-Za-z0-9]+)/);
+    if (!m) {
+      alert('That does not look like a booking link. It should contain "token=".');
+      return;
+    }
+    window.location.href = url + '?token=' + encodeURIComponent(m[1]);
+  });
+
+  document.getElementById('google').addEventListener('click', function () {
+    window.location.href = url + '?as=student';
+  });
+})();
+</script>
+</body>
+</html>

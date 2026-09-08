@@ -1,0 +1,24 @@
+# ---------------------------------------------------------------
+# NEVER COMMIT: real people's contact details.
+# The roster is names, phones and emails of minors and their parents.
+# ---------------------------------------------------------------
+private/
+Roster.gs
+apps-script/Roster.gs
+*-roster.json
+*.roster.gs
+
+# Student access tokens are passwords. They belong in the Sheet, nowhere else.
+tokens.txt
+*-links.csv
+
+# Local junk
+.DS_Store
+node_modules/
+.clasp.json
+.env
+
+# The original standalone matcher has the whole roster baked into its HTML.
+matcher.html
+docs/matcher.html
+ymu-mentor-matcher.html

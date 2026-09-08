@@ -1,0 +1,5 @@
+# The booking pages hold no data, but there is no reason to index them,
+# and a student link should never end up in a search result.
+User-agent: *
+Disallow: /student/
+Disallow: /mentor/

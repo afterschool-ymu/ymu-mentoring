@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<base target="_top">
+<style>
+  /* Warmer than the mentor page on purpose — a different audience, and a
+     visible difference stops anyone wondering whose screen they are on. */
+  :root{--bg:#f7f6f4;--panel:#fff;--ink:#1a1714;--muted:#6f6862;--line:#e6e2dc;
+    --accent:#9a3412;--accent-soft:#fdf1e7;--ok:#1a7f4b;--ok-soft:#e8f6ee;
+    --warn:#8a5a00;--warn-soft:#fdf3e0;--bad:#b3261e;--bad-soft:#fdecea}
+  @media (prefers-color-scheme:dark){:root{--bg:#171512;--panel:#211e1a;--ink:#f0ece7;
+    --muted:#a49a91;--line:#332e28;--accent:#fb923c;--accent-soft:#33231a;
+    --ok:#66d19e;--ok-soft:#17301f;--warn:#e0b060;--warn-soft:#302614;--bad:#f2857c;--bad-soft:#331c1a}}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  .wrap{max-width:660px;margin:0 auto;padding:22px 16px 60px}
+  h1{font-size:22px;margin:0 0 4px;letter-spacing:-.02em}
+  .sub{color:var(--muted);font-size:14px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    padding:18px;margin-bottom:14px}
+  .card h2{font-size:16px;margin:0 0 10px}
+  .facts{display:flex;flex-wrap:wrap;gap:8px}
+  .facts span{background:var(--bg);border:1px solid var(--line);border-radius:999px;
+    padding:5px 13px;font-size:14px}
+  .banner{border-radius:11px;padding:13px 15px;font-size:15px;margin-bottom:14px}
+  .b-warn{background:var(--warn-soft);color:var(--warn)}
+  .b-ok{background:var(--ok-soft);color:var(--ok)}
+  .b-bad{background:var(--bad-soft);color:var(--bad)}
+  .pill{display:inline-block;padding:2px 10px;border-radius:999px;font-size:12.5px;font-weight:650}
+  .p-ok{background:var(--ok-soft);color:var(--ok)}
+  .p-warn{background:var(--warn-soft);color:var(--warn)}
+  .p-bad{background:var(--bad-soft);color:var(--bad)}
+  .p-n{background:var(--accent-soft);color:var(--accent)}
+  button{background:var(--accent);color:#fff;border:0;border-radius:9px;padding:11px 18px;
+    font:inherit;font-weight:600;cursor:pointer}
+  button.ghost{background:transparent;color:var(--accent);border:1px solid var(--line)}
+  button:disabled{opacity:.5;cursor:default}
+  .ses{border-top:1px solid var(--line);padding:15px 0}
+  .ses:first-of-type{border-top:0}
+  .ses-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+  .mon{font-weight:650}
+  .booked{font-size:16px;margin-top:6px}
+  .calhead{display:flex;align-items:center;justify-content:space-between;margin:6px 0 10px}
+  .calhead .mname{font-weight:650}
+  .cal{width:100%;border-collapse:separate;border-spacing:4px}
+  .cal th{font-size:11px;color:var(--muted);font-weight:650;text-transform:uppercase;
+    letter-spacing:.04em;padding-bottom:2px}
+  .cal td{width:20%;padding:0;vertical-align:top}
+  .day{border:1px solid var(--line);border-radius:10px;padding:7px 4px;min-height:56px;
+    text-align:center;background:var(--panel)}
+  .day .n{font-size:15px;font-weight:600}
+  .day .tag{font-size:9.5px;color:var(--muted);display:block;line-height:1.25;margin-top:2px}
+  .day.free{cursor:pointer;border-color:var(--accent);background:var(--accent-soft)}
+  .day.free:hover{border-width:2px}
+  .day.sel{border-color:var(--accent);border-width:2px;box-shadow:0 0 0 3px var(--accent-soft)}
+  .day.shut{background:var(--bg);border-style:dashed;opacity:.7}
+  .day.shut .n{color:var(--muted);font-weight:500}
+  .day.none{background:var(--bg);border-color:transparent}
+  .day.none .n{color:var(--muted);opacity:.4;font-weight:500}
+  .day.empty{border:0;background:none}
+  .daypanel{border:1px solid var(--accent);border-radius:11px;padding:14px;margin-top:11px;
+    background:var(--accent-soft)}
+  .times{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+  .times span{border:1px solid var(--line);background:var(--panel);border-radius:9px;
+    padding:10px 15px;cursor:pointer;font-size:14.5px;font-weight:600}
+  .times span.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .legend{display:flex;gap:13px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);margin-top:10px}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;
+    vertical-align:-1px;border:1px solid var(--line)}
+  .usual{background:var(--ok-soft);color:var(--ok);border-radius:11px;padding:12px 14px;
+    font-size:14px;margin-top:10px}
+  ul.tight{margin:6px 0 0;padding-left:21px}
+  ul.tight li{margin-bottom:5px}
+  #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:20px;background:var(--ink);
+    color:var(--bg);padding:12px 19px;border-radius:9px;font-size:14.5px;opacity:0;
+    transition:opacity .25s;pointer-events:none;max-width:90vw;text-align:center;z-index:9}
+  #toast.on{opacity:1}
+  .spin{color:var(--muted);font-size:13px}
+
+  /* ==================================================================
+     Mobile and touch corrections.
+     Appended last so these win over the rules above at equal specificity.
+     ================================================================== */
+
+  /* 1. iOS Safari zooms the whole page when you focus an input whose
+        font-size is under 16px. The body font is 15px and inputs inherit
+        it, so every tap on a text box was jerking the layout. */
+  input, select, textarea, button { font-size: max(16px, 1em); }
+
+  /* 2. Touch targets. Apple asks for 44px, Google for 48dp. The time
+        chips and slot rows were landing near 28-34px, which is a lot of
+        mis-taps for a parent booking one-handed. Only on touch devices,
+        so the mouse layout stays compact. */
+  @media (pointer: coarse) {
+    .times span, .slot, .opt,
+    .mchips button, .calnav button,
+    button, .site {
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .slot, .site { justify-content: flex-start; }
+    .times span { padding: 10px 16px; }
+    .slot { padding: 10px 12px; }
+    .mchips button { padding: 8px 14px; }
+    .day { min-height: 60px; }
+  }
+
+  /* 3. The Mon-Fri calendar on a small phone. Five columns inside a
+        375px screen leaves about 62px each; the 4px border-spacing and
+        the day padding were eating it. */
+  @media (max-width: 400px) {
+    .wrap { padding-left: 12px; padding-right: 12px; }
+    .cal { border-spacing: 3px; }
+    .day { padding: 5px 2px; }
+    .day .n { font-size: 15px; }
+    .day .tag { font-size: 9px; word-break: break-word; hyphens: auto; }
+    .calhead { flex-wrap: wrap; }
+    .steps div { min-width: 0; flex-basis: calc(50% - 3px); }
+  }
+
+  /* 4. Long site names, addresses and pasted free text should wrap
+        rather than push the card wider than the screen. */
+  body { overflow-wrap: break-word; }
+  .site .nm, .site .meta, .booked, .facts span { overflow-wrap: anywhere; }
+
+  /* 5. Respect a reduced-motion preference for the toast fade. */
+  @media (prefers-reduced-motion: reduce) {
+    #toast { transition: none; }
+    * { scroll-behavior: auto; }
+  }
+
+  /* 6. Keep the toast clear of the iPhone home indicator. */
+  #toast { bottom: calc(20px + env(safe-area-inset-bottom)); }
+</style>
+</head>
+<body>
+<div class="wrap" id="app">Loading…</div>
+<div id="toast"></div>
+
+<script>
+// JSON.stringify does not escape '<'. A mentor typing '</script>' into the
+// closeout box would otherwise terminate this tag and blank their own page.
+var DATA = <?!= JSON.stringify(data).replace(/</g, '\\u003c') ?>;
+var TOKEN = (function(){
+  var m = String(window.location.search || '').match(/[?&]token=([^&]+)/);
+  return m ? decodeURIComponent(m[1]) : '';
+})();
+
+function toast(msg, ms){
+  var t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('on');
+  setTimeout(function(){ t.classList.remove('on'); }, ms || 4200);
+}
+function esc(s){
+  return String(s==null?'':s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; });
+}
+function prettyLocal(iso){
+  var p = iso.split('-').map(Number);
+  var dt = new Date(Date.UTC(p[0], p[1]-1, p[2]));
+  var dow = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'][(dt.getUTCDay()+6)%7];
+  var mon = ['January','February','March','April','May','June','July','August',
+             'September','October','November','December'][p[1]-1];
+  return dow + ' ' + p[2] + ' ' + mon;
+}
+
+var OPEN = null, PICKDAY = null;
+
+function render(){
+  var d = DATA, h = '';
+
+  if(d.mode === 'menteeError'){
+    var msg = d.error === 'badtoken'
+      ? '<h2>This link is not working</h2><p>It may have been replaced by a newer one. ' +
+        'Please check the most recent email from us, or get in touch and we will send a fresh link.</p>'
+      : d.error === 'nosignin'
+      ? '<h2>Please open your link</h2><p>Use the link in the email we sent, or sign in with ' +
+        'the Google account you gave us.</p>'
+      : '<h2>We don\'t recognise this account</h2><p>You are signed in as <b>' + esc(d.email) +
+        '</b>. If that is not the address we have for you, open the link from your email instead.</p>';
+    document.getElementById('app').innerHTML = '<div class="card">' + msg +
+      '<p>Questions: <a href="mailto:' + esc(d.contact) + '">' + esc(d.contact) + '</a></p></div>';
+    return;
+  }
+
+  if(d.mode === 'menteeWaiting'){
+    document.getElementById('app').innerHTML =
+      '<h1>Hi ' + esc(d.firstName) + '</h1>' +
+      '<div class="card" style="margin-top:14px"><h2>You are on the list</h2>' +
+      '<p>We are matching you with a Student Ambassador to work on your instrument. ' +
+      'As soon as you are paired, this page will show you their available times and ' +
+      'you can pick the ones that suit you.</p>' +
+      '<p class="sub">Questions: <a href="mailto:' + esc(d.contact) + '">' + esc(d.contact) + '</a></p></div>';
+    return;
+  }
+
+  h += '<h1>Hi ' + esc(d.firstName) + '</h1>' +
+       '<div class="sub">Your music mentoring sessions</div>';
+
+  h += '<div class="card" style="margin-top:14px"><div class="facts">' +
+    '<span>Your mentor: <b>' + esc(d.mentorFirst) + '</b></span>' +
+    '<span>' + esc(d.instrument) + '</span>' +
+    '<span>' + esc(d.site) + '</span>' +
+    '</div></div>';
+
+  h += d.unbooked
+    ? '<div class="banner b-warn"><b>' + d.unbooked + '</b> of your ' + d.total +
+      ' sessions still need a time. Pick whichever works best for you from ' +
+      esc(d.mentorFirst) + '\'s available days.</div>'
+    : '<div class="banner b-ok">All ' + d.total + ' sessions are booked. See you there.</div>';
+
+  if(d.usual){
+    h += '<div class="card"><div class="usual"><b>Your usual time is ' + esc(d.usual.day) +
+      's at ' + esc(d.usual.time) + '.</b><br>Keeping the same day and time each month makes it ' +
+      'much easier for everyone to remember — we will suggest it first wherever ' +
+      esc(d.mentorFirst) + ' is free.</div></div>';
+  }
+
+  h += '<div class="card"><h2>Your sessions</h2>';
+  d.sessions.forEach(function(s){ h += sesHtml(s, d); });
+  h += '</div>';
+
+  h += '<div class="card"><h2>On the day</h2><ul class="tight">' +
+    '<li>Stay at afterschool as usual — ' + esc(d.mentorFirst) + ' comes to you at ' +
+      esc(d.site) + '.</li>' +
+    '<li>Bring your instrument if you take it home.</li>' +
+    '<li>A member of afterschool staff will be there the whole time.</li>' +
+    '<li>If you cannot make a session, tell us as early as you can: ' +
+      '<a href="mailto:' + esc(d.coordinator) + '">' + esc(d.coordinator) + '</a>.</li>' +
+    '</ul></div>';
+
+  document.getElementById('app').innerHTML = h;
+}
+
+function sesHtml(s, d){
+  var h = '<div class="ses"><div class="ses-head"><span class="mon">' +
+    s.no + '. ' + esc(s.month) + '</span>' + pill(s) + '</div>';
+
+  if(s.status === 'completed'){ return h + '<div class="booked">' + esc(s.pretty) + '</div></div>'; }
+  if(s.status === 'missed'){
+    return h + '<div class="booked sub">' + esc(s.pretty) + ' — did not happen</div></div>';
+  }
+
+  if(s.date){
+    h += '<div class="booked"><b>' + esc(prettyLocal(s.date)) + '</b> at <b>' + esc(s.time) + '</b>' +
+      (s.matchesUsual ? ' <span class="pill p-ok">your usual time</span>' : '') + '</div>';
+  }
+
+  var free = 0;
+  if(s.grid) s.grid.weeks.forEach(function(w){ w.forEach(function(x){
+    if(x) free += x.times.filter(function(t){ return !t.taken; }).length; }); });
+
+  if(!s.grid || !free){
+    h += '<div class="sub">' + esc(d.mentorFirst) + ' has not added any times for ' +
+      esc(s.month) + ' yet. We will email you as soon as they do.</div>';
+    return h + '</div>';
+  }
+
+  // The suggestion — same day and time as usual, if the mentor is free then.
+  if(s.suggestion && !s.date){
+    h += '<div class="usual" style="margin-top:8px">Suggested: <b>' +
+      esc(prettyLocal(s.suggestion.date)) + ' at ' + esc(s.suggestion.time) +
+      '</b> — the same as your usual time.<br>' +
+      '<button style="margin-top:9px" onclick="pick(\'' + s.id + '\',\'' +
+        s.suggestion.date + '\',\'' + s.suggestion.time + '\')">Yes, book that</button></div>';
+  }
+
+  h += '<div style="margin-top:9px">' +
+    '<button class="ghost" onclick="toggleOpen(\'' + s.id + '\')">' +
+      (OPEN === s.id ? 'Close the calendar' : (s.date ? 'Choose a different time' : 'See all available times')) +
+    '</button> <span class="spin" id="sp_' + s.id + '"></span></div>';
+
+  if(OPEN === s.id) h += calHtml(s, d);
+  return h + '</div>';
+}
+
+function pill(s){
+  if(s.status === 'completed') return '<span class="pill p-ok">done</span>';
+  if(s.status === 'missed') return '<span class="pill p-bad">missed</span>';
+  if(s.status === 'unscheduled') return '<span class="pill p-warn">pick a time</span>';
+  return '<span class="pill p-n">booked</span>';
+}
+
+function toggleOpen(id){ OPEN = (OPEN === id) ? null : id; PICKDAY = null; render(); }
+function pickDay(date){ PICKDAY = date; render(); }
+
+function calHtml(s, d){
+  var g = s.grid;
+  var h = '<div style="margin-top:11px"><div class="calhead"><span class="mname">' +
+    esc(g.label) + '</span><span class="sub">when ' + esc(d.mentorFirst) + ' is free</span></div>';
+
+  h += '<table class="cal"><thead><tr>' +
+    ['Mon','Tue','Wed','Thu','Fri'].map(function(x){ return '<th>' + x + '</th>'; }).join('') +
+    '</tr></thead><tbody>';
+
+  g.weeks.forEach(function(week){
+    h += '<tr>';
+    week.forEach(function(day){
+      if(!day){ h += '<td><div class="day empty"></div></td>'; return; }
+      var free = day.times.filter(function(t){ return !t.taken; }).length;
+      var cls = 'day', tag = '', click = '';
+      if(day.closed){ cls += ' shut'; tag = '<span class="tag">' + esc(day.reason) + '</span>'; }
+      else if(!free){ cls += ' none'; }
+      else {
+        cls += ' free';
+        if(PICKDAY === day.date || s.date === day.date) cls += ' sel';
+        click = ' onclick="pickDay(\'' + day.date + '\')"';
+        tag = '<span class="tag">' + free + ' time' + (free > 1 ? 's' : '') + '</span>';
+      }
+      h += '<td><div class="' + cls + '"' + click + '>' +
+        '<span class="n">' + day.dayNum + '</span>' + tag + '</div></td>';
+    });
+    h += '</tr>';
+  });
+  h += '</tbody></table>';
+
+  h += '<div class="legend">' +
+    '<span><i style="background:var(--accent-soft);border-color:var(--accent)"></i>' +
+      esc(d.mentorFirst) + ' is free</span>' +
+    '<span><i style="background:var(--bg);border-style:dashed"></i>school closed</span>' +
+    '<span><i style="background:var(--bg);border-color:transparent"></i>not available</span>' +
+    '</div>';
+
+  var chosen = PICKDAY || s.date;
+  if(chosen){
+    var day = null;
+    g.weeks.forEach(function(w){ w.forEach(function(x){ if(x && x.date === chosen) day = x; }); });
+    if(day && day.times.length){
+      h += '<div class="daypanel"><b>' + esc(prettyLocal(day.date)) + '</b>' +
+        '<div class="sub" style="margin-top:2px">Tap the time you want.</div>' +
+        '<div class="times">' + day.times.map(function(t){
+          if(t.taken) return '';
+          return '<span class="' + (s.date === day.date && s.time === t.time ? 'on' : '') +
+            '" onclick="pick(\'' + s.id + '\',\'' + day.date + '\',\'' + t.time + '\')">' +
+            esc(t.time) + '</span>';
+        }).join('') + '</div></div>';
+    }
+  }
+  return h + '</div>';
+}
+
+function pick(id, date, time){
+  var el = document.getElementById('sp_' + id);
+  if(el) el.textContent = 'Booking…';
+  document.querySelectorAll('button').forEach(function(b){ b.disabled = true; });
+  google.script.run
+    .withSuccessHandler(function(r){
+      document.querySelectorAll('button').forEach(function(b){ b.disabled = false; });
+      if(el) el.textContent = '';
+      toast(r.message, 6500);
+      if(r.ok){ OPEN = null; PICKDAY = null; }
+      if(r.data){ DATA = r.data; render(); }
+    })
+    .withFailureHandler(function(e){
+      document.querySelectorAll('button').forEach(function(b){ b.disabled = false; });
+      if(el) el.textContent = '';
+      toast('Something went wrong: ' + e.message, 6000);
+    })
+    .apiMenteePick(TOKEN, id, date, time);
+}
+
+render();
+</script>
+</body>
+</html>

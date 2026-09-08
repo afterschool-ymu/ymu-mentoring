@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<base target="_top">
+<style>
+  :root{--bg:#f6f7f9;--panel:#fff;--ink:#16181d;--muted:#6b7280;--line:#e3e6ea;
+    --accent:#3b4cca;--accent-soft:#eef0ff;--ok:#1a7f4b;--ok-soft:#e8f6ee;
+    --warn:#9a6200;--warn-soft:#fdf3e0;--bad:#b3261e;--bad-soft:#fdecea}
+  @media (prefers-color-scheme:dark){:root{--bg:#14161a;--panel:#1c1f25;--ink:#e9ebef;
+    --muted:#9aa2ad;--line:#2c313a;--accent:#8b96ff;--accent-soft:#232842;
+    --ok:#66d19e;--ok-soft:#17301f;--warn:#e0b060;--warn-soft:#302614;--bad:#f2857c;--bad-soft:#331c1a}}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  .wrap{max-width:680px;margin:0 auto;padding:20px 16px 60px}
+  h1{font-size:20px;margin:0 0 4px;letter-spacing:-.02em}
+  .sub{color:var(--muted);font-size:13px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    padding:16px;margin-bottom:14px}
+  .card h2{font-size:15px;margin:0 0 10px}
+  .facts{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 4px}
+  .facts span{background:var(--bg);border:1px solid var(--line);border-radius:999px;
+    padding:4px 12px;font-size:13px}
+  .banner{border-radius:10px;padding:12px 14px;font-size:14px;margin-bottom:14px}
+  .b-warn{background:var(--warn-soft);color:var(--warn)}
+  .b-ok{background:var(--ok-soft);color:var(--ok)}
+  .b-bad{background:var(--bad-soft);color:var(--bad)}
+  .ses{border-top:1px solid var(--line);padding:14px 0}
+  .ses:first-of-type{border-top:0}
+  .ses-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+  .mon{font-weight:650}
+  .pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:650}
+  .p-ok{background:var(--ok-soft);color:var(--ok)}
+  .p-warn{background:var(--warn-soft);color:var(--warn)}
+  .p-bad{background:var(--bad-soft);color:var(--bad)}
+  .p-n{background:var(--accent-soft);color:var(--accent)}
+  .booked{font-size:15px;margin-top:6px}
+  select,input,textarea{background:var(--bg);color:var(--ink);border:1px solid var(--line);
+    border-radius:8px;padding:9px 10px;font:inherit;max-width:100%}
+  select:focus,input:focus,textarea:focus{outline:2px solid var(--accent-soft);border-color:var(--accent)}
+  .picker{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:center}
+  button{background:var(--accent);color:#fff;border:0;border-radius:8px;padding:9px 16px;
+    font:inherit;font-weight:600;cursor:pointer}
+  button.ghost{background:transparent;color:var(--accent);border:1px solid var(--line)}
+  button:disabled{opacity:.5;cursor:default}
+  .co{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px;margin-top:10px}
+  .co label{display:block;font-size:12px;color:var(--muted);font-weight:600;margin:8px 0 3px}
+  .co textarea{width:100%;min-height:54px}
+  ul.tight{margin:6px 0 0;padding-left:20px}
+  ul.tight li{margin-bottom:5px}
+  #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:20px;background:var(--ink);
+    color:var(--bg);padding:11px 18px;border-radius:8px;font-size:14px;opacity:0;
+    transition:opacity .25s;pointer-events:none;max-width:90vw;text-align:center;z-index:9}
+  #toast.on{opacity:1}
+  .spin{color:var(--muted);font-size:13px}
+  .steps{display:flex;gap:6px;margin:0 0 16px;font-size:12px;flex-wrap:wrap}
+  .steps div{flex:1;min-width:90px;padding:8px 10px;border-radius:8px;background:var(--panel);
+    border:1px solid var(--line);color:var(--muted)}
+  .steps div.on{border-color:var(--accent);color:var(--accent);font-weight:650}
+  .steps div.done{background:var(--ok-soft);border-color:var(--ok-soft);color:var(--ok)}
+  .site{border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:8px;
+    display:flex;gap:12px;align-items:flex-start;cursor:pointer;background:var(--panel)}
+  .site.pick{border-color:var(--accent);background:var(--accent-soft)}
+  .site input{margin-top:3px;flex-shrink:0}
+  .site .nm{font-weight:600}
+  .site .meta{color:var(--muted);font-size:12.5px;margin-top:2px}
+  .near{background:var(--ok-soft);color:var(--ok);border-radius:999px;padding:1px 8px;
+    font-size:11px;font-weight:650;margin-left:6px}
+  .calhead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:4px 0 10px}
+  .calhead .mname{font-weight:650;font-size:15px}
+  .calnav{display:flex;gap:6px}
+  .calnav button{padding:6px 12px;font-size:13px}
+  .cal{width:100%;border-collapse:separate;border-spacing:4px}
+  .cal th{font-size:11px;color:var(--muted);font-weight:650;padding-bottom:2px;text-transform:uppercase;
+    letter-spacing:.04em}
+  .cal td{width:20%;padding:0;vertical-align:top}
+  .day{border:1px solid var(--line);border-radius:9px;padding:6px 4px;min-height:52px;
+    text-align:center;cursor:pointer;background:var(--panel);position:relative}
+  .day .n{font-size:14px;font-weight:600}
+  .day .tag{font-size:9.5px;color:var(--muted);display:block;line-height:1.25;margin-top:2px}
+  .day.shut{background:var(--bg);border-style:dashed;cursor:not-allowed;opacity:.75}
+  .day.shut .n{color:var(--muted);font-weight:500}
+  .day.none{background:var(--bg);border-color:transparent;cursor:not-allowed}
+  .day.none .n{color:var(--muted);opacity:.45;font-weight:500}
+  .day.free:hover{border-color:var(--accent)}
+  .day.sel{border-color:var(--accent);border-width:2px;background:var(--accent-soft)}
+  .day .dot{display:inline-block;background:var(--accent);color:#fff;border-radius:999px;
+    font-size:10px;font-weight:700;padding:1px 6px;margin-top:3px}
+  .day.empty{border:0;background:none;cursor:default}
+  .daypanel{border:1px solid var(--accent);border-radius:10px;padding:12px;margin-top:10px;
+    background:var(--accent-soft)}
+  .daypanel b{font-size:14px}
+  .times{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+  .times span{border:1px solid var(--line);background:var(--panel);border-radius:8px;
+    padding:8px 13px;cursor:pointer;font-size:13.5px;font-weight:600}
+  .times span.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .times span.taken{opacity:.4;cursor:not-allowed;text-decoration:line-through}
+  .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);margin-top:10px}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;
+    vertical-align:-1px;border:1px solid var(--line)}
+  .mchips{display:flex;flex-wrap:wrap;gap:5px;margin:10px 0 0}
+  .mchips button{padding:5px 10px;font-size:12px;font-weight:600;background:var(--bg);
+    color:var(--muted);border:1px solid var(--line)}
+  .mchips button.cur{border-color:var(--accent);color:var(--accent)}
+  .mchips button.ok{background:var(--ok-soft);color:var(--ok);border-color:var(--ok-soft)}
+  .mchips button.short{background:var(--warn-soft);color:var(--warn);border-color:var(--warn-soft)}
+  .slotgrid{display:flex;flex-wrap:wrap;gap:14px;margin-top:10px}
+  .slotday{min-width:110px}
+  .slotday b{display:block;font-size:12px;color:var(--muted);margin-bottom:5px}
+  .slot{display:block;border:1px solid var(--line);border-radius:7px;padding:6px 9px;
+    margin-bottom:4px;cursor:pointer;font-size:13px;background:var(--bg)}
+  .slot.on{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600}
+  .cov{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px;font-size:11px}
+  .cov span{border-radius:6px;padding:3px 8px;background:var(--ok-soft);color:var(--ok)}
+  .cov span.bad{background:var(--bad-soft);color:var(--bad)}
+  .prob{background:var(--warn-soft);color:var(--warn);border-radius:8px;padding:10px 12px;
+    font-size:13px;margin-top:10px}
+
+  /* ==================================================================
+     Mobile and touch corrections.
+     Appended last so these win over the rules above at equal specificity.
+     ================================================================== */
+
+  /* 1. iOS Safari zooms the whole page when you focus an input whose
+        font-size is under 16px. The body font is 15px and inputs inherit
+        it, so every tap on a text box was jerking the layout. */
+  input, select, textarea, button { font-size: max(16px, 1em); }
+
+  /* 2. Touch targets. Apple asks for 44px, Google for 48dp. The time
+        chips and slot rows were landing near 28-34px, which is a lot of
+        mis-taps for a parent booking one-handed. Only on touch devices,
+        so the mouse layout stays compact. */
+  @media (pointer: coarse) {
+    .times span, .slot, .opt,
+    .mchips button, .calnav button,
+    button, .site {
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .slot, .site { justify-content: flex-start; }
+    .times span { padding: 10px 16px; }
+    .slot { padding: 10px 12px; }
+    .mchips button { padding: 8px 14px; }
+    .day { min-height: 60px; }
+  }
+
+  /* 3. The Mon-Fri calendar on a small phone. Five columns inside a
+        375px screen leaves about 62px each; the 4px border-spacing and
+        the day padding were eating it. */
+  @media (max-width: 400px) {
+    .wrap { padding-left: 12px; padding-right: 12px; }
+    .cal { border-spacing: 3px; }
+    .day { padding: 5px 2px; }
+    .day .n { font-size: 15px; }
+    .day .tag { font-size: 9px; word-break: break-word; hyphens: auto; }
+    .calhead { flex-wrap: wrap; }
+    .steps div { min-width: 0; flex-basis: calc(50% - 3px); }
+  }
+
+  /* 4. Long site names, addresses and pasted free text should wrap
+        rather than push the card wider than the screen. */
+  body { overflow-wrap: break-word; }
+  .site .nm, .site .meta, .booked, .facts span { overflow-wrap: anywhere; }
+
+  /* 5. Respect a reduced-motion preference for the toast fade. */
+  @media (prefers-reduced-motion: reduce) {
+    #toast { transition: none; }
+    * { scroll-behavior: auto; }
+  }
+
+  /* 6. Keep the toast clear of the iPhone home indicator. */
+  #toast { bottom: calc(20px + env(safe-area-inset-bottom)); }
+</style>
+</head>
+<body>
+<div class="wrap" id="app">Loading…</div>
+<div id="toast"></div>
+
+<script>
+// JSON.stringify does not escape '<'. A mentor typing '</script>' into the
+// closeout box would otherwise terminate this tag and blank their own page.
+var DATA = <?!= JSON.stringify(data).replace(/</g, '\\u003c') ?>;
+
+function toast(msg, ms){
+  var t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('on');
+  setTimeout(function(){ t.classList.remove('on'); }, ms || 3800);
+}
+function esc(s){
+  return String(s==null?'':s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; });
+}
+
+function render(){
+  var d = DATA, h = '';
+
+  if(d.mode === 'intake'){ renderIntake(d); return; }
+  if(d.mode === 'waiting'){
+    document.getElementById('app').innerHTML =
+      '<h1>Thanks, ' + esc(d.firstName) + '</h1>' +
+      '<div class="card" style="margin-top:14px"><h2>You are all set for now</h2>' +
+      '<p>We have your availability for ' + d.prefs.map(esc).join(', ') + '.</p>' +
+      '<p>Once we have matched you with a student, your seven session dates will appear ' +
+      'here for you to book.</p>' +
+      '<p class="sub">Questions: <a href="mailto:' + esc(d.contact) + '">' + esc(d.contact) + '</a></p>' +
+      '</div>';
+    return;
+  }
+
+  if(d.error === 'signin'){
+    document.getElementById('app').innerHTML =
+      '<div class="card"><h2>Please sign in</h2><p>Open this page while signed in to your ' +
+      'Google account so we know who you are.</p></div>';
+    return;
+  }
+  if(d.error === 'unknown'){
+    document.getElementById('app').innerHTML =
+      '<div class="card"><h2>We don\'t recognise this account</h2>' +
+      '<p>You are signed in as <b>' + esc(d.email) + '</b>, which isn\'t on the ambassador roster.</p>' +
+      '<p>If you use a different email for YMU, sign in with that one — or email ' +
+      '<a href="mailto:' + esc(d.contact) + '">' + esc(d.contact) + '</a> and we\'ll add this address.</p></div>';
+    return;
+  }
+  if(d.error === 'nopair'){
+    document.getElementById('app').innerHTML =
+      '<div class="card"><h2>Hi ' + esc(d.name) + '</h2>' +
+      '<p>You don\'t have a student assigned yet. Once you\'re paired, your sessions will show up here.</p>' +
+      '<p>Questions: <a href="mailto:' + esc(d.contact) + '">' + esc(d.contact) + '</a></p></div>';
+    return;
+  }
+
+  h += '<h1>Hi ' + esc(d.firstName) + '</h1>' +
+       '<div class="sub">Your mentoring for the year</div>';
+
+  h += '<div class="card" style="margin-top:14px"><div class="facts">' +
+    '<span>Your student: <b>' + esc(d.mentee) + '</b></span>' +
+    '<span>Instrument: <b>' + esc(d.instrument) + '</b></span>' +
+    '<span><b>' + esc(d.site) + '</b></span>' +
+    (d.address ? '<span>' + esc(d.address) + '</span>' : '') +
+    '</div>' +
+    (d.hours ? '<div class="sub" style="margin-top:8px">Afterschool times: ' + esc(d.hours) + '</div>' : '') +
+    '</div>';
+
+  h += d.unbooked
+    ? '<div class="banner b-warn">You still need to pick dates for <b>' + d.unbooked +
+      '</b> of your ' + d.total + ' sessions.</div>'
+    : '<div class="banner b-ok">All ' + d.total + ' sessions are booked. Thank you.</div>';
+
+  h += '<div class="card"><div class="banner b-ok" style="margin:0 0 12px">' +
+    esc(d.mentee) + ' picks the time for each session from the days you offered. ' +
+    'You only need to come here if you have to change one.</div>' +
+    '<h2>Your sessions</h2>';
+  d.sessions.forEach(function(s){ h += sessionHtml(s); });
+  h += '</div>';
+
+  h += '<div class="card"><h2>Before each session</h2><ul class="tight">' +
+    '<li>Arrive a few minutes early and check in with the afterschool staff at the front desk.</li>' +
+    '<li><b>A supervising adult must be present.</b> If nobody from the school is there, ' +
+      'do not start the session — message ' +
+      '<a href="mailto:' + esc(d.coordinator) + '">' + esc(d.coordinator) + '</a> and we will sort it out.</li>' +
+    '<li>Bring your instrument and anything you want to work through.</li>' +
+    '<li>If you can\'t make a date you booked, change it here as early as you can rather than ' +
+      'cancelling on the day.</li>' +
+    '</ul></div>';
+
+  document.getElementById('app').innerHTML = h;
+}
+
+function sessionHtml(s){
+  var h = '<div class="ses"><div class="ses-head"><span class="mon">' +
+    s.no + '. ' + esc(s.month) + '</span>' + statusPill(s) + '</div>';
+
+  if(s.status === 'completed' || s.status === 'missed'){
+    h += '<div class="booked">' + esc(s.pretty) + ' · ' + esc(s.time) + '</div>';
+    if(s.workedOn) h += '<div class="sub">Worked on: ' + esc(s.workedOn) + '</div>';
+    return h + '</div>';
+  }
+
+  if(!s.days.length){
+    h += '<div class="sub">You have not offered any times in ' + esc(s.month) +
+         ' at this school yet. Add some and this month will open up.</div>';
+    return h + '</div>';
+  }
+
+  if(s.date && s.time) h += '<div class="booked"><b>' + esc(s.pretty) + '</b> at <b>' + esc(s.time) + '</b></div>';
+
+  h += '<div style="margin-top:8px">' +
+    '<button class="ghost" onclick="toggleBook(\'' + s.id + '\')" id="tb_' + s.id + '">' +
+      (OPEN_BOOK === s.id ? 'Close' : (s.date ? 'I need to move this' : 'Pick a date for them')) +
+    '</button> ' +
+    (s.date ? '<button class="ghost" onclick="cannotMake(\'' + s.id + '\')">None of these work</button> ' : '') +
+    '<span class="spin" id="s_' + s.id + '"></span></div>';
+
+  if(OPEN_BOOK === s.id) h += bookCalendar(s);
+  if(s.moved > 0) h += '<div class="sub">Moved ' + s.moved + ' time' + (s.moved > 1 ? 's' : '') + '.</div>';
+  if(s.needsCloseout) h += closeoutHtml(s);
+  return h + '</div>';
+}
+
+var OPEN_BOOK = null, BOOK_DAY = null;
+function toggleBook(id){
+  OPEN_BOOK = (OPEN_BOOK === id) ? null : id;
+  BOOK_DAY = null;
+  render();
+}
+
+/** The same month calendar as intake, showing only what the mentor offered. */
+function bookCalendar(s){
+  var g = s.grid;
+  if(!g) return '<div class="sub">No calendar available.</div>';
+
+  var h = '<div style="margin-top:10px"><div class="calhead"><span class="mname">' +
+    esc(g.label) + '</span><span class="sub">your available days</span></div>';
+
+  h += '<table class="cal"><thead><tr>' +
+    ['Mon','Tue','Wed','Thu','Fri'].map(function(x){ return '<th>' + x + '</th>'; }).join('') +
+    '</tr></thead><tbody>';
+
+  g.weeks.forEach(function(week){
+    h += '<tr>';
+    week.forEach(function(day){
+      if(!day){ h += '<td><div class="day empty"></div></td>'; return; }
+      var cls = 'day', tag = '', click = '';
+      var free = day.times.filter(function(t){ return !t.taken; }).length;
+      if(day.closed){ cls += ' shut'; tag = '<span class="tag">' + esc(day.reason) + '</span>'; }
+      else if(!day.times.length){ cls += ' none'; }
+      else if(!free){ cls += ' none'; tag = '<span class="tag">taken</span>'; }
+      else {
+        cls += ' free';
+        if(BOOK_DAY === day.date) cls += ' sel';
+        if(s.date === day.date) cls += ' sel';
+        click = ' onclick="pickBookDay(\'' + day.date + '\')"';
+        tag = '<span class="tag">' + free + ' time' + (free > 1 ? 's' : '') + '</span>';
+      }
+      h += '<td><div class="' + cls + '"' + click + '>' +
+        '<span class="n">' + day.dayNum + '</span>' + tag + '</div></td>';
+    });
+    h += '</tr>';
+  });
+  h += '</tbody></table>';
+
+  var chosen = BOOK_DAY || s.date;
+  if(chosen){
+    var day = null;
+    g.weeks.forEach(function(w){ w.forEach(function(x){ if(x && x.date === chosen) day = x; }); });
+    if(day && day.times.length){
+      h += '<div class="daypanel"><b>' + esc(prettyLocal(day.date)) + '</b>' +
+        '<div class="times">' + day.times.map(function(t){
+          if(t.taken) return '<span class="taken">' + esc(t.time) + '</span>';
+          return '<span class="' + (s.date === day.date && s.time === t.time ? 'on' : '') +
+            '" onclick="confirmBook(\'' + s.id + '\',\'' + day.date + '\',\'' + t.time + '\')">' +
+            esc(t.time) + '</span>';
+        }).join('') + '</div></div>';
+    }
+  }
+  return h + '</div>';
+}
+
+function pickBookDay(date){ BOOK_DAY = date; render(); }
+
+function confirmBook(id, date, time){
+  busy('s_' + id, true, 'Booking…');
+  google.script.run
+    .withSuccessHandler(function(r){
+      busy('s_' + id, false); toast(r.message, 6000);
+      if(r.ok){ OPEN_BOOK = null; BOOK_DAY = null; }
+      if(r.data){ DATA = r.data; render(); }
+    })
+    .withFailureHandler(function(e){ busy('s_' + id, false); toast('Error: ' + e.message); })
+    .apiBook(id, date, time);
+}
+
+function statusPill(s){
+  if(s.status === 'completed') return '<span class="pill p-ok">done</span>';
+  if(s.status === 'missed')    return '<span class="pill p-bad">missed</span>';
+  if(s.status === 'unscheduled') return '<span class="pill p-warn">needs a date</span>';
+  if(s.needsCloseout)         return '<span class="pill p-warn">tell us how it went</span>';
+  return '<span class="pill p-n">booked</span>';
+}
+
+function closeoutHtml(s){
+  return '<div class="co"><b style="font-size:14px">How did it go?</b>' +
+    '<label>Did the session happen?</label>' +
+    '<select id="ch_' + s.id + '">' +
+      ['', 'yes', 'no'].map(function(v){
+        return '<option value="' + v + '"' + (s.happened === v ? ' selected' : '') + '>' +
+          (v === '' ? '—' : v === 'yes' ? 'Yes' : 'No') + '</option>'; }).join('') +
+    '</select>' +
+    '<label>Roughly how many minutes?</label>' +
+    '<input id="cm_' + s.id + '" value="' + esc(s.minutes) + '" placeholder="30" style="width:90px">' +
+    '<label>What did you work on?</label>' +
+    '<textarea id="cw_' + s.id + '" placeholder="Scales, a song you\'re learning…">' + esc(s.workedOn) + '</textarea>' +
+    '<label>Anything YMU should know or follow up on?</label>' +
+    '<textarea id="cf_' + s.id + '" placeholder="Leave blank if all good">' + esc(s.followUp) + '</textarea>' +
+    '<div style="margin-top:10px"><button onclick="saveCloseout(\'' + s.id + '\')">Send</button> ' +
+    '<span class="spin" id="cs_' + s.id + '"></span></div></div>';
+}
+
+/* ==========================================================================
+   Intake — three steps, in this order for a reason:
+   where you start from, so we can rank schools by travel;
+   which of those schools you will actually go to;
+   and when you are free at each of them.
+   ========================================================================== */
+
+var PICKED = {};   // siteId -> { "Tue|3:30 PM": true }
+
+function renderIntake(d){
+  var h = '';
+
+  h += '<h1>Hi ' + esc(d.firstName) + '</h1>' +
+       '<div class="sub">Before we can match you with a student, we need to know where you ' +
+       'can get to and when you are free.</div>';
+
+  h += '<div class="steps" style="margin-top:14px">' +
+    stepChip(1, 'Where you travel from', d.step) +
+    stepChip(2, 'Which schools', d.step) +
+    stepChip(3, d.cycleLabel ? 'When you are free (' + esc(d.cycleLabel) + ')' : 'When you are free', d.step) +
+    '</div>';
+
+  if(d.overdue){
+    h += '<div class="banner b-bad">This was due ' + esc(d.deadline) +
+      '. Please finish it today so we can pair you — email ' +
+      '<a href="mailto:' + esc(d.contact) + '" style="color:inherit">' + esc(d.contact) +
+      '</a> if something is in the way.</div>';
+  } else {
+    h += '<div class="banner b-warn">Please finish this by <b>' + esc(d.deadline) + '</b>' +
+      (d.daysLeft <= 14 ? ' — ' + d.daysLeft + ' day' + (d.daysLeft === 1 ? '' : 's') + ' left' : '') +
+      '.</div>';
+  }
+
+  if(d.step === 1)      h += stepAddress(d);
+  else if(d.step === 2) h += stepSites(d);
+  else                  h += stepSlots(d);
+
+  document.getElementById('app').innerHTML = h;
+}
+
+function stepChip(n, label, cur){
+  var cls = n < cur ? 'done' : (n === cur ? 'on' : '');
+  return '<div class="' + cls + '">' + (n < cur ? '✓ ' : n + '. ') + esc(label) + '</div>';
+}
+
+/* ---- Step 1 ---- */
+function stepAddress(d){
+  return '<div class="card"><h2>Where will you be travelling from?</h2>' +
+    '<p class="sub">Sessions are straight after school, so tell us wherever you will actually ' +
+    'be setting off from. We use this only to suggest the schools closest to you — the less ' +
+    'travelling, the more likely your sessions actually happen.</p>' +
+    '<div style="margin-top:12px">' +
+      '<label style="font-size:12px;color:var(--muted);font-weight:600">I will usually set off from</label><br>' +
+      '<select id="kind" style="margin:6px 0 10px">' +
+        '<option value="school">My school' + (d.ownSchool ? ' (' + esc(d.ownSchool) + ')' : '') + '</option>' +
+        '<option value="home"' + (d.travelKind === 'home' ? ' selected' : '') + '>My home</option>' +
+      '</select><br>' +
+      '<label style="font-size:12px;color:var(--muted);font-weight:600">Address</label><br>' +
+      '<input id="addr" style="width:100%;margin-top:6px" placeholder="Street, city, ZIP" value="' +
+        esc(d.travelFrom) + '">' +
+    '</div>' +
+    '<div style="margin-top:14px"><button onclick="saveAddress()">Find my nearest schools</button> ' +
+    '<span class="spin" id="addrSpin"></span></div>' +
+    '<p class="sub" style="margin-top:12px">Your address is used to work out distances and ' +
+    'nothing else. It is not shared with students or families.</p></div>';
+}
+
+function saveAddress(){
+  var a = document.getElementById('addr').value;
+  var k = document.getElementById('kind').value;
+  if(!a || a.trim().length < 6){ toast('Please enter a full address.'); return; }
+  busy('addrSpin', true, 'Looking it up…');
+  google.script.run
+    .withSuccessHandler(function(r){
+      busy('addrSpin', false); toast(r.message, 4500);
+      if(r.ok && r.data){ DATA = r.data; render(); }
+    })
+    .withFailureHandler(function(e){ busy('addrSpin', false); toast('Error: ' + e.message); })
+    .apiSaveAddress(a, k);
+}
+
+/* ---- Step 2 ---- */
+function stepSites(d){
+  var chosen = {};
+  d.sites.forEach(function(s){ if(s.chosen) chosen[s.site_id] = true; });
+  window.SITEPICK = chosen;
+
+  var h = '<div class="card"><h2>Which schools could you get to?</h2>' +
+    '<p class="sub">Sorted by how far they are from ' +
+    (d.travelKind === 'home' ? 'your home' : 'your school') +
+    '. The top ' + d.suggestCount + ' are the easiest for you to reach — picking one of those ' +
+    'means less travelling on a school afternoon. Choose as many as you would genuinely go to, ' +
+    'up to ' + d.maxPrefs + '.</p>';
+
+  d.sites.forEach(function(s, i){
+    var bits = [];
+    if(s.driveMins != null && !s.isOwnSchool) bits.push('about ' + s.driveMins + ' min drive');
+    if(s.miles != null) bits.push(s.miles + ' mi');
+    if(s.hours) bits.push(s.hours);
+    h += '<label class="site' + (s.chosen ? ' pick' : '') + '" id="sitebox_' + s.site_id + '">' +
+      '<input type="checkbox" value="' + s.site_id + '"' + (s.chosen ? ' checked' : '') +
+        ' onchange="toggleSite(this)">' +
+      '<span><span class="nm">' + esc(s.name) + '</span>' +
+        (s.isOwnSchool ? '<span class="near">your own school</span>'
+                       : (s.suggested ? '<span class="near">closest ' + (i + 1) + '</span>' : '')) +
+        '<span class="meta">' + esc(bits.join(' · ')) + '</span>' +
+        '<span class="meta">' + esc(s.address) + '</span>' +
+      '</span></label>';
+  });
+
+  h += '<div style="margin-top:14px"><button onclick="saveSites()">Continue</button> ' +
+    '<button class="ghost" onclick="backToAddress()">Change my address</button> ' +
+    '<span class="spin" id="siteSpin"></span></div></div>';
+  return h;
+}
+
+function toggleSite(el){
+  window.SITEPICK[el.value] = el.checked;
+  var box = document.getElementById('sitebox_' + el.value);
+  if(box) box.classList.toggle('pick', el.checked);
+}
+
+function backToAddress(){
+  DATA.step = 1; render();
+}
+
+function saveSites(){
+  var ids = Object.keys(window.SITEPICK).filter(function(k){ return window.SITEPICK[k]; });
+  if(!ids.length){ toast('Pick at least one school.'); return; }
+  busy('siteSpin', true, 'Saving…');
+  google.script.run
+    .withSuccessHandler(function(r){
+      busy('siteSpin', false); toast(r.message, 4500);
+      if(r.ok && r.data){ DATA = r.data; render(); }
+    })
+    .withFailureHandler(function(e){ busy('siteSpin', false); toast('Error: ' + e.message); })
+    .apiSaveSites(ids);
+}
+
+/* ---- Step 3: a real calendar ----
+   Availability is picked date by date, not as a weekly pattern. A mentor
+   might be free Monday 12 October and then not again for a fortnight, and
+   a repeating pattern would quietly invent sessions nobody can attend.
+   ------------------------------------------------------------------------ */
+
+var CUR = { site: null, month: 1, day: null, grid: null, counts: [] };
+
+function stepSlots(d){
+  if(!CUR.site){ CUR.site = d.openSite; CUR.month = d.openMonth || 1; CUR.grid = d.grid; }
+  var site = d.chosen.filter(function(c){ return c.site_id === CUR.site; })[0] || d.chosen[0];
+  if(!CUR.counts.length) CUR.counts = site.counts || [];
+
+  var h = '<div class="card"><h2>When are you free in ' +
+      esc(d.cycleLabel || 'the next two months') + '?</h2>' +
+    '<p class="sub">We only ask two months at a time, so you are never guessing about next ' +
+    'spring. We will come back to you nearer the time for the rest of the year.</p>' +
+    '<p class="sub">Pick the <b>actual dates</b> you can make — not a weekly pattern. ' +
+    'Choose a day, then the time that works. Each session is ' + d.sessionMinutes + ' minutes.</p>' +
+    '<p class="sub">You need <b>at least ' + d.minPerMonth + ' times in each of these months</b>. ' +
+    'Please give more where you can — ' + d.encourage + ' or so a month means your student has ' +
+    'a real choice, and there is room to move a session if something comes up.</p>' +
+    '<p class="sub"><b>Try to keep the same day and time each month.</b> The same afternoon ' +
+    'every month is far easier for your student\'s family to remember, and it means we rarely ' +
+    'have to change anything. Days the school is closed are shown but cannot be picked.</p>' +
+    (d.cycleDue ? '<p class="sub">Due by <b>' + esc(d.cycleDue) + '</b>. If we do not hear from ' +
+      'you we will carry your current days and times forward, and tell you if school holidays ' +
+      'leave you short.</p>' : '') +
+    '</div>';
+
+  // School switcher, only when they picked more than one.
+  if(d.chosen.length > 1){
+    h += '<div class="card"><div class="sub" style="font-weight:600;margin-bottom:6px">School</div>' +
+      '<div class="mchips">' + d.chosen.map(function(c){
+        return '<button class="' + (c.site_id === CUR.site ? 'cur ' : '') + (c.ok ? 'ok' : 'short') +
+          '" onclick="switchSite(\'' + c.site_id + '\')">' + esc(c.name.split(' ').slice(0,3).join(' ')) +
+          (c.ok ? ' ✓' : '') + '</button>';
+      }).join('') + '</div></div>';
+  }
+
+  h += '<div class="card"><h2>' + esc(site.name) + (site.ok ? ' <span class="pill p-ok">done</span>' : '') + '</h2>' +
+    '<p class="sub">Afterschool programme runs ' + esc(site.hours) + '</p>' +
+    '<div class="mchips">' + (CUR.counts.length ? CUR.counts : site.counts)
+      .filter(function(c){ return !d.months.length ||
+          d.months.some(function(m){ return m.n === c.n; }); })
+      .map(function(c){
+      return '<button class="' + (c.n === CUR.month ? 'cur ' : '') + (c.ok ? 'ok' : 'short') +
+        '" onclick="switchMonth(' + c.n + ')">' + esc(c.label.slice(0,3)) + ' ' + c.count + '</button>';
+    }).join('') + '</div>' +
+    calendarHtml() +
+    '</div>';
+
+  var allOk = d.chosen.every(function(c){ return c.ok; });
+  h += '<div class="card">' +
+    (allOk
+      ? '<p style="margin-top:0">That is everything we need for ' +
+        esc(d.cycleLabel || 'this cycle') + '. Thank you — we will come back to you ' +
+        'nearer the time for the next two months.</p>' +
+        '<button onclick="finishIntake()">Finish</button> <span class="spin" id="finSpin"></span>'
+      : '<p class="sub" style="margin-top:0">Months still short are marked in amber above. ' +
+        'The Finish button appears once both months have at least ' + d.minPerMonth + '.</p>') +
+    ' <button class="ghost" onclick="backToSites()">Change my schools</button></div>';
+  return h;
+}
+
+function calendarHtml(){
+  var g = CUR.grid;
+  if(!g) return '<div class="sub">Loading…</div>';
+
+  var h = '<div class="calhead"><span class="mname">' + esc(g.label) + '</span>' +
+    '<span class="calnav">' +
+      '<button class="ghost" onclick="switchMonth(' + (g.sessionNo - 1) + ')"' +
+        (inCycle(g.sessionNo - 1) ? '' : ' disabled') + '>‹</button>' +
+      '<button class="ghost" onclick="switchMonth(' + (g.sessionNo + 1) + ')"' +
+        (inCycle(g.sessionNo + 1) ? '' : ' disabled') + '>›</button>' +
+    '</span></div>';
+
+  h += '<table class="cal"><thead><tr>' +
+    ['Mon','Tue','Wed','Thu','Fri'].map(function(x){ return '<th>' + x + '</th>'; }).join('') +
+    '</tr></thead><tbody>';
+
+  g.weeks.forEach(function(week){
+    h += '<tr>';
+    week.forEach(function(day){
+      if(!day){ h += '<td><div class="day empty"></div></td>'; return; }
+      var cls = 'day', tag = '', dot = '';
+      if(day.closed){ cls += ' shut'; tag = '<span class="tag">' + esc(day.reason) + '</span>'; }
+      else if(!day.times.length){ cls += ' none'; }
+      else {
+        cls += ' free';
+        if(CUR.day === day.date) cls += ' sel';
+        if(day.pickedHere) dot = '<span class="dot">' + day.pickedHere + '</span>';
+      }
+      var click = (day.times.length && !day.closed)
+        ? ' onclick="openDay(\'' + day.date + '\')"' : '';
+      h += '<td><div class="' + cls + '"' + click + '>' +
+        '<span class="n">' + day.dayNum + '</span>' + tag + dot + '</div></td>';
+    });
+    h += '</tr>';
+  });
+  h += '</tbody></table>';
+
+  h += '<div class="legend">' +
+    '<span><i style="background:var(--panel)"></i>Pick a day</span>' +
+    '<span><i style="background:var(--accent-soft);border-color:var(--accent)"></i>Selected</span>' +
+    '<span><i style="background:var(--bg);border-style:dashed"></i>School closed</span>' +
+    '<span><i style="background:var(--bg);border-color:transparent"></i>No programme</span>' +
+    '</div>';
+
+  if(g.closedDays){
+    h += '<p class="sub" style="margin-top:8px">' + g.closedDays +
+      ' day' + (g.closedDays === 1 ? '' : 's') + ' closed this month for holidays or planning.</p>';
+  }
+
+  // The chosen day's times.
+  if(CUR.day){
+    var day = null;
+    g.weeks.forEach(function(w){ w.forEach(function(x){ if(x && x.date === CUR.day) day = x; }); });
+    if(day){
+      h += '<div class="daypanel"><b>' + esc(prettyLocal(day.date)) + '</b>' +
+        '<div class="sub" style="margin-top:2px">Tap every time you could make that day.</div>' +
+        '<div class="times">' + day.times.map(function(t){
+          return '<span class="' + (t.picked ? 'on' : '') + '" onclick="tapTime(\'' +
+            day.date + '\',\'' + t.time + '\')">' + esc(t.time) + '</span>';
+        }).join('') + '</div></div>';
+    }
+  }
+  return h;
+}
+
+function prettyLocal(iso){
+  var p = iso.split('-').map(Number);
+  var dt = new Date(Date.UTC(p[0], p[1]-1, p[2]));
+  var dow = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][(dt.getUTCDay()+6)%7];
+  var mon = ['January','February','March','April','May','June','July','August',
+             'September','October','November','December'][p[1]-1];
+  return dow + ' ' + p[2] + ' ' + mon;
+}
+
+function switchSite(id){
+  CUR.site = id; CUR.day = null; CUR.counts = [];
+  loadMonth(id, 1);
+}
+/** Only the months of the cycle we are collecting can be opened. */
+function inCycle(n){
+  if(!DATA.months || !DATA.months.length) return n >= 1 && n <= 7;
+  return DATA.months.some(function(m){ return m.n === n; });
+}
+
+function switchMonth(n){
+  if(!inCycle(n)) return;
+  CUR.day = null;
+  loadMonth(CUR.site, n);
+}
+function openDay(date){
+  CUR.day = (CUR.day === date) ? null : date;
+  render();
+}
+
+function loadMonth(siteId, n){
+  CUR.month = n;
+  google.script.run
+    .withSuccessHandler(function(r){
+      if(!r.ok){ toast(r.message); return; }
+      CUR.grid = r.grid; CUR.counts = r.counts; render();
+    })
+    .withFailureHandler(function(e){ toast('Error: ' + e.message); })
+    .apiMonth(siteId, n);
+}
+
+/** Each tap saves immediately, so nothing is lost if they wander off. */
+function tapTime(date, time){
+  var g = CUR.grid, day = null;
+  g.weeks.forEach(function(w){ w.forEach(function(x){ if(x && x.date === date) day = x; }); });
+  if(!day) return;
+  var slot = day.times.filter(function(t){ return t.time === time; })[0];
+  if(!slot) return;
+
+  var want = !slot.picked;
+  slot.picked = want;                       // optimistic, so it feels instant
+  day.pickedHere += want ? 1 : -1;
+  render();
+
+  google.script.run
+    .withSuccessHandler(function(r){
+      if(!r.ok){
+        slot.picked = !want; day.pickedHere += want ? -1 : 1;   // roll back
+        toast(r.message, 6000); render(); return;
+      }
+      CUR.counts = r.counts;
+      var m = CUR.counts.filter(function(c){ return c.n === CUR.month; })[0];
+      if(m && want && m.count === DATA.minPerMonth){
+        toast(m.label + ' has the ' + DATA.minPerMonth + ' it needs. More is better — ' +
+              'aim for around ' + DATA.encourage + ' if you can.');
+      }
+      if(r.complete && !DATA.wasComplete){ DATA.wasComplete = true; }
+      refreshChips();
+    })
+    .withFailureHandler(function(e){
+      slot.picked = !want; day.pickedHere += want ? -1 : 1;
+      toast('Error: ' + e.message); render();
+    })
+    .apiToggleSlot(CUR.site, date, time, want);
+}
+
+/** Keeps the month chips and the Finish button honest without a full reload. */
+function refreshChips(){
+  var site = DATA.chosen.filter(function(c){ return c.site_id === CUR.site; })[0];
+  if(site){
+    site.counts = CUR.counts;
+    site.ok = CUR.counts.every(function(c){ return c.ok; });
+    site.total = CUR.counts.reduce(function(a,c){ return a + c.count; }, 0);
+  }
+  render();
+}
+
+function finishIntake(){
+  busy('finSpin', true, 'Checking…');
+  google.script.run
+    .withSuccessHandler(function(r){
+      busy('finSpin', false); toast(r.message, 6000);
+      if(r.ok && r.data){ CUR = {site:null, month:1, day:null, grid:null, counts:[]};
+                          DATA = r.data; render(); }
+    })
+    .withFailureHandler(function(e){ busy('finSpin', false); toast('Error: ' + e.message); })
+    .apiFinishIntake();
+}
+
+function backToSites(){ CUR = {site:null, month:1, day:null, grid:null, counts:[]};
+                        DATA.step = 2; render(); }
+
+/* ---- actions ---- */
+
+
+function busy(id, on, msg){
+  var el = document.getElementById(id);
+  if(el) el.textContent = on ? (msg || 'Saving…') : '';
+  document.querySelectorAll('button').forEach(function(b){ b.disabled = on; });
+}
+
+
+/**
+ * A mentor can move a session but cannot simply drop one. If none of the
+ * offered dates work, a person picks it up — the existing booking stays put
+ * in the meantime so nothing silently disappears from anyone's calendar.
+ */
+function cannotMake(id){
+  var why = prompt('None of the available dates work?\n\n' +
+    'Tell us briefly what is going on and we will find a way. ' +
+    'Your current booking stays in place until we agree a new one.');
+  if(why === null) return;
+  busy('s_' + id, true, 'Sending…');
+  google.script.run
+    .withSuccessHandler(function(r){
+      busy('s_' + id, false); toast(r.message, 7000);
+      if(r.data){ DATA = r.data; render(); }
+    })
+    .withFailureHandler(function(e){ busy('s_' + id, false); toast('Error: ' + e.message); })
+    .apiCannotMake(id, why);
+}
+
+function saveCloseout(id){
+  var happened = document.getElementById('ch_' + id).value;
+  if(!happened){ toast('Let us know whether the session happened.'); return; }
+  busy('cs_' + id, true, 'Sending…');
+  google.script.run
+    .withSuccessHandler(function(r){
+      busy('cs_' + id, false); toast(r.message);
+      if(r.data){ DATA = r.data; render(); }
+    })
+    .withFailureHandler(function(e){ busy('cs_' + id, false); toast('Error: ' + e.message); })
+    .apiCloseout(id, happened,
+      document.getElementById('cm_' + id).value,
+      document.getElementById('cw_' + id).value,
+      document.getElementById('cf_' + id).value);
+}
+
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>YMU Mentoring — Control Centre</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --panel:#fff; --ink:#16181d; --muted:#6b7280; --line:#e3e6ea;
+    --accent:#3b4cca; --accent-soft:#eef0ff;
+    --mentee:#9a3412; --mentee-soft:#fdf1e7;
+    --ok:#1a7f4b; --ok-soft:#e8f6ee;
+    --warn:#9a6200; --warn-soft:#fdf3e0;
+    --bad:#b3261e; --bad-soft:#fdecea;
+    --code:#f2f3f5;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#14161a; --panel:#1c1f25; --ink:#e9ebef; --muted:#9aa2ad; --line:#2c313a;
+      --accent:#8b96ff; --accent-soft:#232842;
+      --mentee:#fb923c; --mentee-soft:#33231a;
+      --ok:#66d19e; --ok-soft:#17301f;
+      --warn:#e0b060; --warn-soft:#302614;
+      --bad:#f2857c; --bad-soft:#331c1a;
+      --code:#232830;
+    }
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth;scroll-padding-top:64px}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+
+  header{background:var(--panel);border-bottom:1px solid var(--line);padding:15px 24px;
+    display:flex;align-items:center;gap:16px;flex-wrap:wrap;position:sticky;top:0;z-index:30}
+  header h1{font-size:16px;margin:0;font-weight:650;letter-spacing:-.01em}
+  header .tag{color:var(--muted);font-size:12.5px}
+  .spacer{flex:1}
+  nav{display:flex;gap:2px;overflow-x:auto}
+  nav a{color:var(--muted);text-decoration:none;font-size:13px;font-weight:550;
+    padding:6px 11px;border-radius:7px;white-space:nowrap}
+  nav a:hover{background:var(--bg);color:var(--ink)}
+
+  main{max-width:940px;margin:0 auto;padding:32px 24px 90px}
+  section{margin-bottom:44px;scroll-margin-top:70px}
+  h2{font-size:21px;margin:0 0 6px;letter-spacing:-.02em}
+  h3{font-size:15.5px;margin:26px 0 8px}
+  h4{font-size:14px;margin:18px 0 6px}
+  p{margin:0 0 12px}
+  .lede{color:var(--muted);font-size:15px;margin-bottom:20px;max-width:70ch}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    padding:20px;margin-bottom:16px}
+
+  .hero{background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    padding:28px;margin-bottom:32px}
+  .hero h2{font-size:26px;margin-bottom:10px}
+  .stats{display:flex;flex-wrap:wrap;gap:0;margin-top:20px;border-top:1px solid var(--line);
+    padding-top:4px}
+  .stats div{padding:12px 22px 12px 0;margin-right:22px;border-right:1px solid var(--line)}
+  .stats div:last-child{border-right:0}
+  .stats b{display:block;font-size:25px;font-weight:650;letter-spacing:-.02em;line-height:1.2}
+  .stats span{color:var(--muted);font-size:12.5px}
+
+  .three{display:grid;grid-template-columns:repeat(auto-fit,minmax(255px,1fr));gap:14px}
+  .who{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;
+    border-top:3px solid var(--line)}
+  .who.mgr{border-top-color:var(--ok)}
+  .who.mtr{border-top-color:var(--accent)}
+  .who.stu{border-top-color:var(--mentee)}
+  .who h4{margin:0 0 4px;font-size:15px}
+  .who .role{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;font-weight:700;
+    color:var(--muted);margin-bottom:9px}
+  .who ul{margin:8px 0 0;padding-left:19px;font-size:13.5px;color:var(--muted)}
+  .who li{margin-bottom:4px}
+  .who .open{display:inline-block;margin-top:12px;font-size:13px;font-weight:600;
+    text-decoration:none;padding:7px 13px;border-radius:8px;background:var(--bg);
+    border:1px solid var(--line);color:var(--ink)}
+
+  ol.steps{list-style:none;counter-reset:s;padding:0;margin:0}
+  ol.steps > li{counter-increment:s;position:relative;padding:0 0 22px 46px;
+    border-left:2px solid var(--line);margin-left:14px}
+  ol.steps > li:last-child{border-left-color:transparent;padding-bottom:0}
+  ol.steps > li::before{content:counter(s);position:absolute;left:-15px;top:-2px;
+    width:28px;height:28px;border-radius:50%;background:var(--accent);color:#fff;
+    display:grid;place-items:center;font-size:13px;font-weight:700}
+  ol.steps > li h3{margin:0 0 5px;font-size:15.5px}
+  ol.steps > li p{font-size:14px;margin-bottom:8px}
+  .chk{display:flex;align-items:flex-start;gap:9px;font-size:13.5px;color:var(--muted);
+    cursor:pointer;padding:3px 0}
+  .chk input{margin-top:4px;flex-shrink:0}
+  .chk.done{color:var(--ok);text-decoration:line-through}
+
+  table{border-collapse:collapse;width:100%;font-size:13.5px}
+  .tw{overflow-x:auto;border:1px solid var(--line);border-radius:11px;background:var(--panel)}
+  th,td{text-align:left;padding:10px 13px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{background:var(--bg);font-size:11px;text-transform:uppercase;letter-spacing:.05em;
+    color:var(--muted);font-weight:700}
+  tr:last-child td{border-bottom:0}
+  td code{font-size:12.5px}
+
+  code{background:var(--code);padding:2px 6px;border-radius:5px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px}
+  pre{background:var(--code);padding:13px 15px;border-radius:9px;overflow-x:auto;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;margin:0 0 12px}
+
+  .note{border-radius:10px;padding:13px 16px;font-size:14px;margin:0 0 14px}
+  .n-warn{background:var(--warn-soft);color:var(--warn)}
+  .n-bad{background:var(--bad-soft);color:var(--bad)}
+  .n-ok{background:var(--ok-soft);color:var(--ok)}
+  .n-info{background:var(--accent-soft);color:var(--accent)}
+  .note b{font-weight:700}
+
+  .pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11.5px;font-weight:650}
+  .p-ok{background:var(--ok-soft);color:var(--ok)}
+  .p-warn{background:var(--warn-soft);color:var(--warn)}
+  .p-bad{background:var(--bad-soft);color:var(--bad)}
+  .p-n{background:var(--accent-soft);color:var(--accent)}
+  .p-s{background:var(--mentee-soft);color:var(--mentee)}
+
+  .tl{position:relative;padding-left:0;margin:0}
+  .tl li{list-style:none;display:grid;grid-template-columns:118px 1fr;gap:14px;
+    padding:11px 0;border-bottom:1px solid var(--line);font-size:14px}
+  .tl li:last-child{border-bottom:0}
+  .tl .when{font-weight:650;font-size:13px}
+  .tl .when small{display:block;color:var(--muted);font-weight:400;font-size:12px}
+
+  ul.tight{margin:6px 0 12px;padding-left:20px}
+  ul.tight li{margin-bottom:5px}
+  .files{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:8px}
+  .file{background:var(--panel);border:1px solid var(--line);border-radius:9px;
+    padding:10px 13px;font-size:13px}
+  .file b{font-family:ui-monospace,Menlo,monospace;font-size:12.5px;display:block}
+  .file span{color:var(--muted);font-size:12px}
+  footer{border-top:1px solid var(--line);padding:22px 24px;text-align:center;
+    color:var(--muted);font-size:12.5px}
+  @media print{header,nav{position:static}.who .open{display:none}}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>YMU Mentoring</h1>
+    <div class="tag">Student Ambassador matching, scheduling and follow-up</div>
+  </div>
+  <div class="spacer"></div>
+  <nav>
+    <a href="#overview">Overview</a>
+    <a href="#links">Links</a>
+    <a href="#who">Who sees what</a>
+    <a href="#setup">Setup</a>
+    <a href="#year">The year</a>
+    <a href="#rules">Rules</a>
+    <a href="#messages">Messages</a>
+    <a href="#format">Why Apps Script</a>
+    <a href="#decisions">Your decisions</a>
+    <a href="#files">Files</a>
+  </nav>
+</header>
+
+<main>
+
+<!-- ============================================================ -->
+<div class="hero" id="overview">
+  <h2>What this is</h2>
+  <p class="lede">A complete system for running one-on-one music mentoring: matching Student
+  Ambassadors to afterschool students, letting families choose their own session times,
+  sending every reminder automatically, and tracking how each student is getting on.
+  It runs entirely inside your own Google Workspace. Nothing to host, nothing to pay for.</p>
+
+  <div class="stats">
+    <div><b>15</b><span>Student Ambassadors</span></div>
+    <div><b>12</b><span>school sites</span></div>
+    <div><b>7</b><span>sessions per pair</span></div>
+    <div><b>4</b><span>availability cycles</span></div>
+    <div><b>28</b><span>holiday closures</span></div>
+    <div><b>10</b><span>automated messages</span></div>
+    <div><b>$0</b><span>running cost</span></div><div><b>3</b><span>files to paste</span></div>
+  </div>
+</div>
+
+
+<div class="card" id="links" style="border-left:3px solid var(--accent)">
+  <h4 style="margin-top:0">The two links you share</h4>
+  <p style="font-size:13.5px;color:var(--muted)">These are the public addresses. They forward to
+  the Apps Script web app, so if you ever redeploy and Google gives you a new
+  <code>/exec</code> URL, you change <code>docs/config.js</code> once instead of re-emailing
+  everybody.</p>
+  <div class="files">
+    <div class="file"><b>/mentor/</b><span>Student Ambassadors — Google sign-in</span></div>
+    <div class="file"><b>/student/?token=…</b><span>One private link per student, emailed to the guardian</span></div>
+  </div>
+  <p style="font-size:13px;color:var(--muted);margin:10px 0 0"><b>The student link is personal.</b>
+  It is the only secret in the system — treat it like a password, and never post it publicly.
+  <code>/student/</code> with no token shows a help page, not anyone's data.</p>
+</div>
+
+<div class="note n-ok">
+  <b>The design principle throughout:</b> automate everything routine, and put a human in front
+  of everything that needs judgement. If it's working, you should barely touch the scheduling.
+  Your time goes on programme quality, mentor support and the handful of real exceptions.
+</div>
+
+<!-- ============================================================ -->
+<section id="who">
+  <h2>Who sees what</h2>
+  <p class="lede">Three audiences, three different screens. Mentors and students are both minors,
+  so they never see each other's contact details and never arrange sessions privately —
+  an adult is on every thread.</p>
+
+  <div class="three">
+    <div class="who mgr">
+      <div class="role">You</div>
+      <h4>The spreadsheet</h4>
+      <p style="font-size:13.5px;color:var(--muted);margin:0">Everything lives in one Google Sheet
+      you can read and fix by hand. A menu drives the whole system.</p>
+      <ul>
+        <li>Rosters, pairs, sessions, feedback</li>
+        <li>Edit any message wording</li>
+        <li>Daily digest — only when something needs you</li>
+        <li>Cycle and intake progress reports</li>
+      </ul>
+    </div>
+
+    <div class="who mtr">
+      <div class="role">Student Ambassador</div>
+      <h4>The mentor page</h4>
+      <p style="font-size:13.5px;color:var(--muted);margin:0">Google sign-in. Says where they
+      travel from, picks nearby schools, marks the dates they're free.</p>
+      <ul>
+        <li>Nearest schools ranked by real drive time</li>
+        <li>Calendar picker, two months at a time</li>
+        <li>Their own session list</li>
+        <li>No student or parent data beyond their own pairing</li>
+      </ul>
+      <a class="open" href="preview/mentor.html">Open the preview →</a>
+    </div>
+
+    <div class="who stu">
+      <div class="role">Student &amp; guardian</div>
+      <h4>The student page</h4>
+      <p style="font-size:13.5px;color:var(--muted);margin:0">A private link, no login needed.
+      They see when their mentor is free and <b>choose the time themselves</b>.</p>
+      <ul>
+        <li>Only their mentor's offered days</li>
+        <li>One tap to keep their usual time</li>
+        <li>School holidays shown and blocked</li>
+        <li>Cannot see any other student</li>
+      </ul>
+      <a class="open" href="preview/student.html">Open the preview →</a>
+    </div>
+  </div>
+
+  <div class="note n-info" style="margin-top:16px">
+    <b>Who books?</b> The mentor offers times; the <b>student picks</b>. That way the family
+    chooses the hour that fits round pickup, siblings and homework, instead of being handed one.
+    The mentor only comes back to the page if they need to move something.
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="setup">
+  <h2>Setup, step by step</h2>
+  <p class="lede">About 15 minutes. Tick things off as you go — the boxes are just for
+  following along, they reset if you reload.</p>
+
+  <ol class="steps">
+
+    <li>
+      <h3>Create the spreadsheet</h3>
+      <p>A new Google Sheet in your YMU Drive, named <b>YMU Mentoring</b>. This becomes the
+      database for everything.</p>
+      <label class="chk"><input type="checkbox"><span>Sheet created in the YMU Drive, not a personal one</span></label>
+    </li>
+
+    <li>
+      <h3>Open the script editor</h3>
+      <p><b>Extensions → Apps Script.</b> This opens a project bound to your sheet.</p>
+      <label class="chk"><input type="checkbox"><span>Apps Script editor open</span></label>
+    </li>
+
+    <li>
+      <h3>Paste in the code — three pastes</h3>
+      <p>Delete the default <code>Code.gs</code>. Then:</p>
+      <div class="tw" style="margin-bottom:10px"><table>
+        <thead><tr><th>Click</th><th>Name it</th><th>Paste</th></tr></thead>
+        <tbody>
+          <tr><td><b>+ → Script</b></td><td><code>Code</code></td><td><code>YMU-Mentoring-AllInOne.gs</code></td></tr>
+          <tr><td><b>+ → HTML</b></td><td><code>MentorPage</code></td><td><code>MentorPage.html</code></td></tr>
+          <tr><td><b>+ → HTML</b></td><td><code>MenteePage</code></td><td><code>MenteePage.html</code></td></tr>
+        </tbody>
+      </table></div>
+      <p style="font-size:13.5px;color:var(--muted)">Names must match exactly, with no
+      extension typed in. The all-in-one file is the twelve script files joined together —
+      identical code, tested the same way. If you would rather keep them separate (easier to
+      read, easier to change one thing later), the twelve individual files are in the same
+      folder and go in as <code>Config</code>, <code>Setup</code>, <code>Geo</code> and so on.</p>
+      <p style="font-size:13.5px;color:var(--muted)">Don't paste the two
+      <code>-preview.html</code> files — those exist only so you can see the screens on your
+      own computer.</p>
+      <label class="chk"><input type="checkbox"><span>Three files pasted, ⌘S saved</span></label>
+    </li>
+
+    <li>
+      <h3>Turn on the Calendar service</h3>
+      <p>In the left sidebar next to <b>Services</b>, click <b>+</b>, choose
+      <b>Google Calendar API</b>, leave the identifier as <code>Calendar</code>, click <b>Add</b>.</p>
+      <div class="note n-bad" style="margin:8px 0">
+        <b>Don't skip this.</b> Booking fails without it. It's what lets the script pass
+        <code>sendUpdates:'all'</code> — the only reliable way to make Google email the
+        invitation to guests when an event is created <i>or changed</i>.
+      </div>
+      <label class="chk"><input type="checkbox"><span>Google Calendar API added as <code>Calendar</code></span></label>
+    </li>
+
+    <li>
+      <h3>Run the setup menu, in order</h3>
+      <p>Reload the spreadsheet tab. A <b>YMU Mentoring</b> menu appears. Work down it:</p>
+      <label class="chk"><input type="checkbox"><span><b>1. Set up workbook</b> — creates every tab and a "YMU Mentoring" calendar</span></label>
+      <label class="chk"><input type="checkbox"><span><b>2. Load the 12 school sites</b> — verified addresses and programme hours</span></label>
+      <label class="chk"><input type="checkbox"><span><b>3. Load the 15 ambassadors</b> — with instruments, contacts and parents</span></label>
+      <label class="chk"><input type="checkbox"><span><b>4. Locate the schools</b> — geocodes the addresses; takes about a minute</span></label>
+      <label class="chk"><input type="checkbox"><span><b>5. Load the school-year calendar</b> — the 28 closure days</span></label>
+      <label class="chk"><input type="checkbox"><span><b>6. Load the message templates</b> — all 10 emails, onto a tab you can edit</span></label>
+      <label class="chk"><input type="checkbox"><span><b>7. Create the feedback form</b> — builds the Google Form</span></label>
+      <p style="font-size:13px;color:var(--muted);margin-top:10px">Google will ask you to
+      authorise the script on the first run. The "unverified app" warning is normal for your own
+      script — <i>Advanced → Go to (unsafe)</i>. Read the permissions before allowing.</p>
+    </li>
+
+    <li>
+      <h3>Deploy the web app</h3>
+      <p><b>Deploy → New deployment → Web app.</b></p>
+      <pre>Description:     Mentor and student booking
+Execute as:      Me
+Who has access:  Anyone with a Google account</pre>
+      <p>Copy the URL it gives you. One URL serves both pages — it works out who's asking.</p>
+      <div class="note n-info" style="margin:8px 0">
+        <b>Why those settings.</b> "Execute as Me" lets the script write to your sheet on
+        someone else's behalf. "Anyone with a Google account" hands sign-in to Google, so you
+        never create or reset a password — and the code still checks every visitor against the
+        roster before showing anything.
+      </div>
+      <label class="chk"><input type="checkbox"><span>Deployed, URL copied</span></label>
+    </li>
+
+    <li>
+      <h3>Paste the URL into Config</h3>
+      <p>In <code>Config.gs</code>:</p>
+      <pre>webAppUrl: 'https://script.google.com/macros/s/……/exec'</pre>
+      <p>Save. This is what puts a working button in every reminder email, so nobody has to
+      hunt for a link.</p>
+      <label class="chk"><input type="checkbox"><span><code>webAppUrl</code> set and saved</span></label>
+    </li>
+
+    <li>
+      <h3>Install the automation</h3>
+      <p>Menu → <b>Install automation</b>. Three triggers, and deliberately no more —
+      Apps Script allows 20 per script, so anything per-session would break immediately.</p>
+      <div class="tw" style="margin-bottom:10px"><table>
+        <thead><tr><th>Trigger</th><th>Runs</th><th>Does</th></tr></thead>
+        <tbody>
+          <tr><td><code>dailyTick</code></td><td>6am daily</td><td>Reminders, chasing, cycle rollover, your digest</td></tr>
+          <tr><td><code>feedbackTick</code></td><td>Every 15 min</td><td>Sends the feedback form near a session's end</td></tr>
+          <tr><td><code>onFeedbackSubmit</code></td><td>On form submit</td><td>Files each response against the right session</td></tr>
+        </tbody>
+      </table></div>
+      <p style="font-size:13px;color:var(--muted)">Run step 7 (create the form) before this,
+      so the form trigger has something to attach to.</p>
+      <label class="chk"><input type="checkbox"><span>Automation installed, all three triggers confirmed</span></label>
+    </li>
+
+    <li>
+      <h3>Test before you trust it</h3>
+      <label class="chk"><input type="checkbox"><span>Menu → <b>Check my email quota</b>. You want <b>1,500</b>. If it says 100, the script is on a personal account — move it to ymu.org</span></label>
+      <label class="chk"><input type="checkbox"><span>Menu → <b>Run the daily job now</b> — you should get a summary email</span></label>
+      <label class="chk"><input type="checkbox"><span>Open the web app URL yourself. You aren't on the mentor roster, so you should see the friendly "we don't recognise this account" screen — that's the security check working</span></label>
+      <label class="chk"><input type="checkbox"><span>Add yourself to the Mentors tab, make a test pair, book a session, confirm the calendar invite arrives with everyone on it</span></label>
+      <label class="chk"><input type="checkbox"><span>Menu → <b>Show the message schedule</b> — read every message before real families get them</span></label>
+    </li>
+
+    <li>
+      <h3>Fill in what only you know</h3>
+      <p>Three things the seed data can't supply:</p>
+      <label class="chk"><input type="checkbox"><span><b>Site staff emails</b> on the Sites tab — this address goes on every invite and is who the day-of coverage check asks</span></label>
+      <label class="chk"><input type="checkbox"><span><b>Programme hours</b> for Miami Carol City Senior, Miami Central and Booker T. Washington — blank hours means mentors see no dates at all</span></label>
+      <label class="chk"><input type="checkbox"><span><b>Your students</b> on the Mentees tab, then <b>Create student booking links</b> and <b>Email students their links</b></span></label>
+      <p style="margin-top:12px">Hours format — day ranges work, later lines override earlier ones,
+      times are assumed PM:</p>
+      <pre>Tue 3:10-5:10; Wed 2:00-4:00; Thu 3:10-5:10
+Mon-Fri 3:00-6:00; Wed 2:00-6:00</pre>
+    </li>
+
+  </ol>
+</section>
+
+<!-- ============================================================ -->
+<section id="year">
+  <h2>How the year runs</h2>
+
+  <h3>Seven sessions, October to April</h3>
+  <p>One session a month per pair, an hour each. October and April are completely clear of
+  holidays; December loses 10 weekdays and March loses 6 in a row.</p>
+
+  <h3>Availability is collected two months at a time</h3>
+  <p class="lede">Nobody is asked in September what they're doing next April. A mentor only
+  ever sees, and is only ever blocked by, the cycle in front of them.</p>
+
+  <div class="tw"><table>
+    <thead><tr><th>Cycle</th><th>Opens</th><th>Due</th><th>Collects for</th></tr></thead>
+    <tbody>
+      <tr><td><b>C1</b></td><td>1 Sept 2026</td><td>12 Sept 2026</td><td>October, November</td></tr>
+      <tr><td><b>C2</b></td><td>2 Nov 2026</td><td>13 Nov 2026</td><td>December, January</td></tr>
+      <tr><td><b>C3</b></td><td>4 Jan 2027</td><td>15 Jan 2027</td><td>February, March</td></tr>
+      <tr><td><b>C4</b></td><td>1 Mar 2027</td><td>12 Mar 2027</td><td>April</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="note n-warn" style="margin-top:14px">
+    <b>Worth understanding:</b> the cycle being <i>collected</i> is not the cycle whose sessions
+    are <i>running</i>. In early November, C1's November sessions are still happening while
+    mentors are being asked about December and January. Menu →
+    <b>Where is each cycle up to?</b> shows exactly who has done what.
+  </div>
+
+  <h3>What happens when a cycle turns over</h3>
+  <ul class="tl">
+    <li><span class="when">Cycle opens<small>e.g. 2 Nov</small></span>
+      <span>Every mentor is emailed asking for their times, and pushed to keep the same
+      days and times they've been doing.</span></li>
+    <li><span class="when">Weekly<small>until the deadline</small></span>
+      <span>Anyone who hasn't answered is asked again. Never daily — that's how people
+      start ignoring you.</span></li>
+    <li><span class="when">Deadline passes<small>no reply</small></span>
+      <span>Their existing pattern is <b>carried forward</b> onto the new cycle's valid dates,
+      skipping holidays. They're told it happened and asked to check it.</span></li>
+    <li><span class="when">Then re-checked<small>the important bit</small></span>
+      <span>A Tuesday-3:30 pattern that gave four October dates gives three in December once
+      winter recess is out. If a month falls below the minimum, that mentor gets a
+      "your availability is short — school holidays" email. <b>This is the case that
+      otherwise silently breaks a month.</b></span></li>
+  </ul>
+
+  <h3>School closures are hard blocks</h3>
+  <p>The 28 non-student weekdays come from the Board-approved MDCPS 2026-27 calendar,
+  cross-checked against the district's Technical calendar and reconciled against the published
+  instructional-day counts (45+46+42+47 = 180) — which is how we know none is missing.
+  Closed days appear on every calendar but can't be picked, labelled with the reason.</p>
+  <p>Add a school's own closure — a hurricane day, testing week, an event — as a row on the
+  <b>Closures</b> tab with that school's <code>site_id</code>. Leave <code>site_id</code> blank
+  for a district-wide day.</p>
+  <div class="note n-warn">
+    <b>One thing to check with each school:</b> every Wednesday, K-8 centres release grades 2–8
+    an hour early. That affects Fienberg/Fisher, West Little River and Henry Reeves. If it
+    shortens their Wednesday programme, edit that site's <code>hours</code> — the district
+    calendar can't tell us.
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="rules">
+  <h2>The rules it enforces</h2>
+  <p class="lede">All of these are checked on the server, so a stale browser tab can't get
+  round them.</p>
+
+  <div class="tw"><table>
+    <thead><tr><th>Rule</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><b>Instrument must match exactly</b><br><span class="pill p-bad">no exceptions</span></td>
+        <td>A trumpet student can't be coached by a guitarist. This is the one hard filter in matching.</td>
+      </tr>
+      <tr>
+        <td><b>Sessions are 1 hour</b></td>
+        <td>Changes which slots fit: Fienberg's 3:10–5:10 window holds two one-hour slots (3:30 and 4:00), not three half-hour ones.</td>
+      </tr>
+      <tr>
+        <td><b>At least 2 times per month, per school</b></td>
+        <td>Fewer than two and a cancellation has nowhere to go. Mentors are asked for around 6.</td>
+      </tr>
+      <tr>
+        <td><b>Rescheduling needs 2 full hours still on offer</b></td>
+        <td>A mentor whose only remaining option is the one they just vacated hasn't rescheduled — they've cornered the family. A <i>student</i> choosing a time is never blocked by this.</td>
+      </tr>
+      <tr>
+        <td><b>Cancelling requires a replacement</b></td>
+        <td>Picking the new date <i>is</i> the cancellation. A freed slot nobody is watching is how a session gets lost. "None of these work" escalates to you instead, and the old booking holds until you agree a new one.</td>
+      </tr>
+      <tr>
+        <td><b>One pair per site per time slot</b></td>
+        <td>Room availability. Booking a taken slot is refused by name: "already taken by Gabriel Bello-Diaz and Mentee 3."</td>
+      </tr>
+      <tr>
+        <td><b>Over 2 reschedules escalates to you</b></td>
+        <td>Past that it stops being logistics and becomes a conversation about whether the pairing or the time of day is working.</td>
+      </tr>
+      <tr>
+        <td><b>No session without a supervising adult</b></td>
+        <td>Stated in every calendar invite, in the day-of coverage check, and on the mentor's own page. Not negotiable.</td>
+      </tr>
+      <tr>
+        <td><b>No direct student-to-student contact</b></td>
+        <td>Both are minors. Every message includes a parent and an adult; contact details are never exchanged, and guests can't see each other's addresses on invites.</td>
+      </tr>
+    </tbody>
+  </table></div>
+
+  <h3>Consistency is pushed everywhere</h3>
+  <p>The first booking sets a pair's usual day and time. Every later month then leads with
+  <i>"Suggested: Tuesday 10 November at 3:30 — the same as your usual time"</i> and a one-tap
+  button. The mentor's form asks them to keep the same pattern, and the carry-forward only
+  works if they have. The same afternoon every month is easier for a family to remember,
+  easier for site staff to cover, and produces far fewer changes.</p>
+</section>
+
+<!-- ============================================================ -->
+<section id="messages">
+  <h2>Every automated message</h2>
+  <p class="lede">All ten live on the <b>Templates</b> tab. Edit the subject or body there and
+  the next send uses your wording — no code change, no redeploy. Set <code>enabled</code> to
+  <code>FALSE</code> to switch one off entirely.</p>
+
+  <div class="tw"><table>
+    <thead><tr><th>Message</th><th>Goes to</th><th>When</th><th>How often</th></tr></thead>
+    <tbody>
+      <tr><td><b>Pairing confirmation</b></td><td>Everyone</td><td>Pair approved</td><td>Once per pair</td></tr>
+      <tr><td><b>New cycle — please update</b></td><td>Mentor + parents</td><td>Cycle opens</td><td>Weekly until done</td></tr>
+      <tr><td><b>We carried your times forward</b></td><td>Mentor + parents</td><td>Deadline passed, no reply</td><td>Once per cycle</td></tr>
+      <tr><td><b>Holidays left you short</b></td><td>Mentor + parents</td><td>A month falls below the minimum</td><td>Weekly until fixed</td></tr>
+      <tr><td><b>Nobody's picked a time</b></td><td>Guardian, mentor cc'd</td><td>Month closing, still unbooked</td><td>Weekly until booked</td></tr>
+      <tr><td><b>One week before</b></td><td>Everyone</td><td>7 days out</td><td>Once per session</td></tr>
+      <tr><td><b>The day before</b></td><td>Everyone</td><td>1 day out</td><td>Once per session</td></tr>
+      <tr><td><b>Day-of coverage check</b> <span class="pill p-warn">the important one</span></td><td>Everyone</td><td>Morning of</td><td>Once per session</td></tr>
+      <tr><td><b>Feedback form</b></td><td>Mentor + guardian</td><td>5 min before the session ends</td><td>Once per session</td></tr>
+      <tr><td><b>Missed session follow-up</b></td><td>Everyone</td><td>Marked missed</td><td>Once</td></tr>
+    </tbody>
+  </table></div>
+
+  <p style="margin-top:14px">Plus the calendar invitation itself, which Google sends — and
+  re-sends automatically whenever a date changes. That one costs nothing against your email
+  quota.</p>
+
+  <div class="note n-bad">
+    <b>A trap worth knowing about.</b> Google treats calendar reminders as private per-user data.
+    A "1 week before" reminder set by the organiser fires only for the organiser — guests get
+    their own defaults. So these reminders are emails the script sends. Anyone who suggests
+    replacing them with event reminders is wrong, and you'd discover it in November when no
+    parent had been reminded.
+  </div>
+
+  <p><b>Placeholders</b> you can use in any template:</p>
+  <pre>{{mentee}} {{mentor}} {{instrument}} {{site}} {{siteAddress}} {{month}}
+{{date}} {{time}} {{count}} {{booked}} {{unbooked}} {{cycleMonths}} {{cycleDue}}
+{{bookingLink}} {{menteeLink}} {{feedbackLink}} {{coordinator}}</pre>
+  <p style="font-size:13.5px;color:var(--muted)">Anything unrecognised is left visible in the
+  email rather than silently vanishing, so a typo shows up where you'll catch it.</p>
+
+  <h3>Feedback and reporting</h3>
+  <p>The form asks who's filling it in, how the session went (1–5), how much progress the
+  student is making (1–5), what they worked on, and anything YMU should follow up on.
+  Its link carries a hidden session reference, so a response files itself against the right
+  session and pair — nobody types a reference number.</p>
+  <p>A mentor's response also closes the session out. Anything in the follow-up box emails you
+  immediately and shows on the dashboard. Menu → <b>Feedback so far</b> gives average
+  satisfaction and progress per pair, for end-of-year reporting.</p>
+</section>
+
+<!-- ============================================================ -->
+<section id="decisions">
+  <h2>Still needs a decision from you</h2>
+  <p class="lede">These aren't bugs. They're things the system can't decide, and two of them
+  matter before October.</p>
+
+  <div class="card" style="border-left:3px solid var(--bad)">
+    <h4 style="margin-top:0">1. Instrument coverage doesn't match the programmes
+      <span class="pill p-bad">structural</span></h4>
+    <p>The 15 ambassadors are a rock band — 5 Voice, 4 Guitar, 2 Keys, 2 Bass, 2 Drums.
+    Six of the twelve sites run <b>Jazz Afterschool</b> or <b>Marching Band</b>, and there are
+    <b>zero</b> trumpet, sax, trombone or violin mentors. Since instrument is the one
+    non-negotiable rule, every horn student will land in the unmatched list, every cycle.</p>
+    <p style="margin-bottom:0"><b>Either</b> recruit horn ambassadors, <b>or</b> accept that
+    Jazz and Marching sites aren't in scope this year. Rock sites you're well covered for:
+    Nautilus, Fienberg/Fisher, Miami Beach Senior High.</p>
+  </div>
+
+  <div class="card" style="border-left:3px solid var(--bad)">
+    <h4 style="margin-top:0">2. Safeguarding — two ambassadors
+      <span class="pill p-bad">before any pairing</span></h4>
+    <ul class="tight" style="margin-bottom:0">
+      <li><b>Juan Romero</b> is listed as <i>Alumni</i>. If he's 18 or over he isn't a peer
+      mentor — he'd need a background check and staff-level supervision before being paired
+      with a minor.</li>
+      <li><b>Gabriel Bello-Diaz</b> is in 8th grade, younger than some mentees. Confirm he's
+      mentoring rather than being mentored.</li>
+    </ul>
+  </div>
+
+  <div class="card" style="border-left:3px solid var(--warn)">
+    <h4 style="margin-top:0">3. Smaller things</h4>
+    <ul class="tight" style="margin-bottom:0">
+      <li><b>Skill levels are guessed</b> — inferred from grade (11th/12th/Alumni → Advanced,
+      8th–10th → Intermediate) and marked "inferred". Real levels would improve matching.</li>
+      <li><b>Gabriella Cimring</b> — your roster spelled it "Cirming"; her email says
+      <i>cimring</i>. I used Cimring.</li>
+      <li><b>Partial / Full column</b> — I stored it but don't know what it tracks. If it's
+      consent paperwork, it should probably block matching until complete. Tell me and I'll
+      wire it in.</li>
+      <li><b>Three sites have no programme hours</b> — Miami Carol City Senior, Miami Central,
+      Booker T. Washington. Mentors there see no dates at all.</li>
+      <li><b>Fienberg/Fisher's old domain has lapsed</b> and now redirects to an unrelated
+      gambling site. Don't click it from an old bookmark or district link.</li>
+    </ul>
+  </div>
+
+  <div class="card" style="border-left:3px solid var(--accent)">
+    <h4 style="margin-top:0">4. When your feedback form arrives</h4>
+    <p style="margin-bottom:0">Send it over and I'll either move your questions into the one
+    that's built — keeping the "Session reference" field, which is what makes responses
+    self-match — or point the plumbing at yours instead.</p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="format">
+  <h2>Why it lives where it does</h2>
+  <p class="lede">A reasonable question: does this have to be a Google Sheet with a script
+  behind it, or should it be a "real" app?</p>
+
+  <div class="note n-warn">
+    <b>The short answer:</b> yes, you do have to do the setup once — nothing is live until
+    you do. The HTML files sitting in your folder are documentation and previews. They cannot
+    <i>be</i> the system, and no amount of work on them would change that.
+  </div>
+
+  <h3>Why a plain HTML file can never be the real thing</h3>
+  <p>A file on your computer has no server behind it. That means it physically cannot:</p>
+  <ul class="tight">
+    <li><b>Send an email.</b> No reminders, no invitations, no nudges.</li>
+    <li><b>Run when nobody has it open.</b> The 6am job and the feedback trigger need
+    something awake at 6am.</li>
+    <li><b>Be shared.</b> Fifteen mentors and their students all need to see the same data.
+    A file on your laptop is one copy, on your laptop.</li>
+    <li><b>Know who is looking.</b> No sign-in means no way to show Ella her student and not
+    everyone else's.</li>
+    <li><b>Create calendar invitations.</b></li>
+  </ul>
+  <p>Those five things <i>are</i> the system. So the question isn't HTML versus app — it's
+  which server does the work.</p>
+
+  <h3>The realistic options</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Option</th><th>Cost</th><th>Effort</th><th>Honest verdict</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><b>Google Apps Script</b><br><span class="pill p-ok">what you have</span></td>
+        <td><b>$0</b></td>
+        <td>~15 min once</td>
+        <td>Runs inside the Workspace you already pay nothing for. Free sign-in, free email,
+        free scheduling, free calendar, free maps. You own the data and can fix anything by
+        hand in a spreadsheet. Nothing to renew, nothing to migrate.</td>
+      </tr>
+      <tr>
+        <td><b>A custom web app</b><br><span class="sub">React, database, hosting</span></td>
+        <td>$20–80/mo,<br>plus build</td>
+        <td>Weeks, then ongoing</td>
+        <td>Prettier and more flexible. But it needs a developer on call, a hosting bill,
+        a database to back up, and security patching. For 15 pairs that is a lot of
+        machinery for no extra outcome.</td>
+      </tr>
+      <tr>
+        <td><b>Off-the-shelf mentoring software</b></td>
+        <td>Often $$$/yr</td>
+        <td>Days, plus training</td>
+        <td>Worth pricing if you scale to hundreds. None of it will know about MDCPS holidays,
+        instrument matching, or your specific afterschool windows without configuration —
+        and most is built for corporate mentoring, not minors at school sites.</td>
+      </tr>
+      <tr>
+        <td><b>Spreadsheet plus manual email</b></td>
+        <td>$0</td>
+        <td>Hours every month</td>
+        <td>What Sammy explicitly asked to avoid.</td>
+      </tr>
+    </tbody>
+  </table></div>
+
+  <h3>It <em>is</em> an app, from where anyone else stands</h3>
+  <p>Nobody but you ever sees a spreadsheet. A mentor gets a link, taps it, signs in with the
+  Google account they already have, and sees a clean screen built for a phone. A parent taps a
+  link and picks a time. Neither of them knows or cares what is behind it.</p>
+  <p>On a phone, <b>Share → Add to Home Screen</b> puts an icon on the home screen that opens
+  straight to their page. It behaves like an app because, to them, it is one. No app store,
+  no download, no password to forget.</p>
+
+  <div class="note n-info">
+    <b>Where the spreadsheet is an advantage, not a compromise.</b> When something goes wrong
+    at 4pm on a Tuesday — a student moves school, a mentor drops out, a site changes its hours
+    — you fix it by typing in a cell. No ticket, no developer, no waiting. Very few custom
+    apps give you that.
+  </div>
+
+  <h3>When you would outgrow it</h3>
+  <p>Around <b>60–100 pairs</b> the greedy matching would want replacing with a proper
+  assignment algorithm, and the daily job would need to read in batches rather than scanning
+  every row. Both are contained changes to code that already exists. Nothing about this
+  design traps you: the data is in a spreadsheet, exportable to anything, and the rules are
+  written in plain JavaScript you or anyone else can read.</p>
+  <p style="margin-bottom:0">At 15 pairs, and at 100, this is the right shape.</p>
+</section>
+
+<!-- ============================================================ -->
+<section id="files">
+  <h2>What's in the folder</h2>
+
+  <h3>Paste these into Apps Script</h3>
+  <div class="files" style="margin-bottom:14px">
+    <div class="file" style="border-color:var(--ok);background:var(--ok-soft)">
+      <b>YMU-Mentoring-AllInOne.gs</b><span>All twelve script files in one — the quick way</span></div>
+    <div class="file"><b>MentorPage.html</b><span>Mentor screen</span></div>
+    <div class="file"><b>MenteePage.html</b><span>Student screen</span></div>
+  </div>
+  <p style="font-size:13.5px;color:var(--muted)">Or keep them separate:</p>
+  <div class="files">
+    <div class="file"><b>Config.gs</b><span>Settings, cycles, tab layout</span></div>
+    <div class="file"><b>Setup.gs</b><span>Menu, seed data, triggers, reports</span></div>
+    <div class="file"><b>Geo.gs</b><span>Geocoding and drive times</span></div>
+    <div class="file"><b>Closures.gs</b><span>The 28 MDCPS closure days</span></div>
+    <div class="file"><b>Cycles.gs</b><span>Two-month cycles, carry-forward</span></div>
+    <div class="file"><b>Availability.gs</b><span>Dates, calendars, the rules</span></div>
+    <div class="file"><b>Scheduling.gs</b><span>Booking, invites, reschedule rule</span></div>
+    <div class="file"><b>Templates.gs</b><span>All ten messages</span></div>
+    <div class="file"><b>Feedback.gs</b><span>Form, sending, matching</span></div>
+    <div class="file"><b>MenteeApp.gs</b><span>The student's side</span></div>
+    <div class="file"><b>Reminders.gs</b><span>The daily job</span></div>
+    <div class="file"><b>WebApp.gs</b><span>Routes both audiences</span></div>
+  </div>
+
+  <h3>Open these on your computer</h3>
+  <div class="files">
+    <div class="file"><b>MentorPage-preview.html</b><span>See the mentor's experience</span></div>
+    <div class="file"><b>MenteePage-preview.html</b><span>See the student's experience</span></div>
+    <div class="file"><b>SETUP.md</b><span>The same setup steps as text</span></div>
+    <div class="file"><b>ymu-mentor-matcher.html</b><span>The original standalone matching tool. Kept in <code>private/</code>, never published — it has the whole roster, phone numbers included, baked into the file.</span></div>
+  </div>
+
+  <div class="note n-info" style="margin-top:18px">
+    <b>The two preview files don't go into Apps Script.</b> They exist so you can see and
+    demo both screens without deploying anything. They use real school hours and the real
+    holiday calendar, but a made-up student and mentor, and they save nothing.
+  </div>
+
+  <h3>Cost</h3>
+  <p><b>$0.</b> Apps Script, Sheets, Calendar, Forms and Maps are all included in Google
+  Workspace for Nonprofits, and the geocoding needs no API key. If you later want text
+  messages to parents, Twilio is about 1.5¢ each but US sending requires A2P 10DLC
+  registration — roughly <b>$55 in year one</b> on the 501(c)(3) charity rate, with 10–15 days
+  for approval. Start that in September if you want texts by October.</p>
+</section>
+
+</main>
+
+<footer>
+  YMU Mentoring · Built for Young Musicians Unite
+</footer>
+
+<script>
+  // Checkboxes are a following-along aid only — deliberately not persisted,
+  // so nobody mistakes a tick here for the system actually being configured.
+  document.addEventListener('change', function (e) {
+    if (e.target.type !== 'checkbox') return;
+    e.target.closest('.chk').classList.toggle('done', e.target.checked);
+  });
+</script>
+</body>
+</html>
