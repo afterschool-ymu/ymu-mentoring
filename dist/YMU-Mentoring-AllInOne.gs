@@ -41,7 +41,7 @@ const CFG = {
   // Availability is gathered two months at a time. A mentor is only ever
   // asked about the cycle in front of them.
   cycles: [
-    { id: 'C1', collectFrom: '2026-09-01', dueBy: '2026-09-12', covers: [1, 2] }, // Oct, Nov
+    { id: 'C1', collectFrom: '2026-09-23', dueBy: '2026-10-16', covers: [1, 2] }, // Oct, Nov
     { id: 'C2', collectFrom: '2026-11-02', dueBy: '2026-11-13', covers: [3, 4] }, // Dec, Jan
     { id: 'C3', collectFrom: '2027-01-04', dueBy: '2027-01-15', covers: [5, 6] }, // Feb, Mar
     { id: 'C4', collectFrom: '2027-03-01', dueBy: '2027-03-12', covers: [7]    }  // Apr
