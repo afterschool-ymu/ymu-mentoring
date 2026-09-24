@@ -16,7 +16,7 @@
 
 window.YMU = {
   // e.g. 'https://script.google.com/macros/s/AKfycb...../exec'
-  webAppUrl: 'https://script.google.com/macros/s/AKfycbzjq85TQ74jziPDki_mqgN0-_8lbeYwlS6JjxyL9H_T6E8dBOxVhjYDGl5fzAHbn9oZ/exec',
+  webAppUrl: 'https://script.google.com/macros/s/AKfycbyHufj8WmvfVsRzhCirXimjUM0T-JKtPYYyxFJU93UUYjDm6CvfALCZagwIBdDw9o0N/exec',
 
   // Shown to anyone who gets stuck.
   coordinatorEmail: 'afterschool@ymu.org',
