@@ -256,7 +256,7 @@ function sendCycleMail_(mentor, cycle, key, shortMonth) {
   ctx.minPerMonth = CFG.minSlotsPerMonth;
   ctx.coordinator = CFG.coordinatorEmail;
   ctx.coordinatorName = CFG.coordinatorName;
-  ctx.bookingLink = CFG.webAppUrl || '(booking page)';
+  ctx.bookingLink = mentorLink_(mentor) || CFG.publicMentorUrl || '(booking page)';
 
   MailApp.sendEmail({
     to: to.join(','), cc: CFG.coordinatorEmail,
@@ -282,7 +282,7 @@ function shell_(bodyHtml) {
          '<div style="font-size:12px;color:#6b7280">' + CFG.coordinatorName +
          ' &middot; <a href="mailto:' + CFG.coordinatorEmail + '" style="color:#3b4cca">' +
          CFG.coordinatorEmail + '</a>' +
-         (CFG.webAppUrl ? ' &middot; <a href="' + CFG.webAppUrl + '" style="color:#3b4cca">Booking page</a>' : '') +
+         (CFG.publicMentorUrl ? ' &middot; <a href="' + CFG.publicMentorUrl + '" style="color:#3b4cca">Booking page</a>' : '') +
          '</div></div>';
 }
 
@@ -359,7 +359,7 @@ function nudgeMentor_(s, pair, daysLeft) {
       ' left in the month.</p>' +
       '<p>Pick whatever date and time suits you from the afterschool slots. It takes a minute, ' +
       'and booking early means you get first choice.</p>' +
-      (CFG.webAppUrl ? '<p><a href="' + CFG.webAppUrl + '" style="background:#3b4cca;color:#fff;' +
+      (mentorLink_(mentor) ? '<p><a href="' + mentorLink_(mentor) + '" style="background:#3b4cca;color:#fff;' +
         'padding:10px 18px;border-radius:7px;text-decoration:none;display:inline-block">' +
         'Book your session</a></p>' : '') +
       '<p style="color:#6b7280">Sessions you still need to book this year: ' + unbooked + '</p>')
@@ -384,7 +384,7 @@ function askForCloseout_(s, pair) {
       '<ol><li>Did the session happen?</li><li>Roughly how long was it?</li>' +
       '<li>What did you work on?</li>' +
       '<li>Anything YMU should know or follow up on?</li></ol>' +
-      (CFG.webAppUrl ? '<p><a href="' + CFG.webAppUrl + '" style="background:#3b4cca;color:#fff;' +
+      (mentorLink_(mentor) ? '<p><a href="' + mentorLink_(mentor) + '" style="background:#3b4cca;color:#fff;' +
         'padding:10px 18px;border-radius:7px;text-decoration:none;display:inline-block">' +
         'Answer on the booking page</a></p>' : '<p>Just reply to this email.</p>'))
   });
@@ -469,7 +469,7 @@ function chaseIntake_(mentor, status, daysLeft) {
       'student, ' + what + '. ' + urgency + '</p>' +
       '<p>It takes about three minutes: your address so we can suggest the schools nearest ' +
       'you, which of those you could get to, and the times you are free.</p>' +
-      (CFG.webAppUrl ? '<p><a href="' + CFG.webAppUrl + '" style="background:#3b4cca;color:#fff;' +
+      (mentorLink_(mentor) ? '<p><a href="' + mentorLink_(mentor) + '" style="background:#3b4cca;color:#fff;' +
         'padding:10px 18px;border-radius:7px;text-decoration:none;display:inline-block">' +
         'Fill in your availability</a></p>' : '') +
       '<p style="color:#6b7280">If something is getting in the way, just reply to this email.</p>')

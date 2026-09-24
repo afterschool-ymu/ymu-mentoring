@@ -26,7 +26,8 @@ function issueMenteeTokens() {
   log_('Tokens', 'Issued ' + made + ' mentee access links');
   notify_(made + ' private links created.\n\n' +
     'Each student now has an access_token on the Mentees tab. Their link is:\n\n' +
-    (CFG.webAppUrl || '<your web app URL>') + '?token=THEIR_TOKEN\n\n' +
+    (CFG.publicStudentUrl || CFG.webAppUrl || '<your public student URL>') +
+    '?token=THEIR_TOKEN\n\n' +
     'Use menu → "Email students their booking links" to send them, or copy one to test.\n\n' +
     'Treat these like passwords: the link is all somebody needs to see that ' +
     "student's sessions.");
@@ -34,8 +35,10 @@ function issueMenteeTokens() {
 }
 
 function menteeLink_(mentee) {
-  if (!CFG.webAppUrl || !mentee.access_token) return '';
-  return CFG.webAppUrl + '?token=' + mentee.access_token;
+  if (!mentee || !mentee.access_token) return '';
+  const base = CFG.publicStudentUrl || CFG.webAppUrl;
+  if (!base) return '';
+  return base + '?token=' + mentee.access_token;
 }
 
 /** Resolves whoever is asking into a single mentee, or an error. */

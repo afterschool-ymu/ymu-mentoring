@@ -72,7 +72,15 @@ const CFG = {
   // ---- Plumbing -------------------------------------------------------
   calendarName: 'YMU Mentoring', // a dedicated calendar, created on setup
   tz: 'America/New_York',
-  webAppUrl: '',                 // paste your deployed web app URL here after step 6
+  // The deployed web app. Used to talk to the script itself.
+  webAppUrl: 'https://script.google.com/macros/s/AKfycbyHufj8WmvfVsRzhCirXimjUM0T-JKtPYYyxFJU93UUYjDm6CvfALCZagwIBdDw9o0N/exec',
+
+  // What goes in EMAILS. These are the stable public addresses, which forward
+  // to whatever webAppUrl currently is. Google issues a new /exec URL on every
+  // new deployment, so linking straight to it would break every link already
+  // sitting in a mentor's or a family's inbox. Change docs/config.js instead.
+  publicMentorUrl:  'https://afterschool-ymu.github.io/ymu-mentoring/mentor/',
+  publicStudentUrl: 'https://afterschool-ymu.github.io/ymu-mentoring/student/',
   feedbackFormUrl: ''            // only needed if you use your own form instead
 };
 
@@ -564,8 +572,12 @@ function loadMentors() {
    ==================================================================== */
 
 function mentorLink_(mentor) {
-  if (!CFG.webAppUrl || !mentor.access_token) return '';
-  return CFG.webAppUrl + '?m=' + mentor.access_token;
+  if (!mentor || !mentor.access_token) return '';
+  const base = CFG.publicMentorUrl || CFG.webAppUrl;
+  if (!base) return '';
+  // The public address takes ?token=; the shim forwards it on as ?m=.
+  const param = CFG.publicMentorUrl ? 'token' : 'm';
+  return base + '?' + param + '=' + mentor.access_token;
 }
 
 /** Creates a link for any mentor missing one. Safe to run again. */
@@ -580,7 +592,8 @@ function issueMentorTokens() {
   log_('Tokens', 'Issued ' + made + ' mentor links');
   notify_(made + ' mentor links created.\n\n' +
     'Each ambassador now has an access_token on the Mentors tab. Their link is:\n\n' +
-    (CFG.webAppUrl || '<your web app URL>') + '?m=THEIR_TOKEN\n\n' +
+    (CFG.publicMentorUrl || CFG.webAppUrl || '<your public mentor URL>') +
+    '?token=THEIR_TOKEN\n\n' +
     'Use menu -> "Email mentors their links" to send them.\n\n' +
     'Treat these like passwords: the link is all somebody needs to act as that ' +
     'ambassador. It shows no student contact details.');
@@ -592,7 +605,7 @@ function emailMentorLinks() {
   const rows = readTab_('Mentors').filter(function (m) {
     return (m.active === true || m.active === 'TRUE') && m.access_token && m.email;
   });
-  if (!CFG.webAppUrl) { notify_('Set CFG.webAppUrl first.'); return 0; }
+  if (!mentorLink_({ access_token: 'x' })) { notify_('Set publicMentorUrl or webAppUrl in Config first.'); return 0; }
 
   let sent = 0, skipped = [];
   rows.forEach(function (m) {
@@ -631,7 +644,9 @@ function emailMentorLinks() {
  * to a tab where they would sit in the file for good.
  */
 function showAllLinks() {
-  if (!CFG.webAppUrl) { notify_('Set CFG.webAppUrl in Config first.'); return; }
+  if (!CFG.publicMentorUrl && !CFG.webAppUrl) {
+    notify_('Set publicMentorUrl and publicStudentUrl in Config first.'); return;
+  }
 
   function rowsFor(tab, tokenParam, emailField) {
     return readTab_(tab)
@@ -640,7 +655,7 @@ function showAllLinks() {
         return {
           name: r.name,
           who: r[emailField] || '(no address on file)',
-          url: CFG.webAppUrl + '?' + tokenParam + '=' + r.access_token
+          url: (tokenParam === 'm' ? mentorLink_(r) : menteeLink_(r))
         };
       });
   }
@@ -840,8 +855,8 @@ function installTriggers() {
 
 /** Emails each student (and their guardian) their private booking link. */
 function emailMenteeLinks() {
-  if (!CFG.webAppUrl) {
-    notify_('Set webAppUrl in Config.gs first — the links are built from it.');
+  if (!CFG.publicStudentUrl && !CFG.webAppUrl) {
+    notify_('Set publicStudentUrl in Config.gs first — the links are built from it.');
     return 0;
   }
   let sent = 0, skipped = [];
@@ -2002,7 +2017,7 @@ function eventBody_(s, pair, date, time) {
       'from the school is there, the session does not go ahead — contact ' +
       CFG.coordinatorEmail + '.\n\n' +
       'To change this date, the mentor should use the booking page rather than ' +
-      'replying here.' + (CFG.webAppUrl ? '\n' + CFG.webAppUrl : ''),
+      'replying here.' + (mentorLink_(mentor) ? '\n' + mentorLink_(mentor) : ''),
     start: { dateTime: Utilities.formatDate(start, CFG.tz, "yyyy-MM-dd'T'HH:mm:ss"), timeZone: CFG.tz },
     end:   { dateTime: Utilities.formatDate(end,   CFG.tz, "yyyy-MM-dd'T'HH:mm:ss"), timeZone: CFG.tz },
     attendees: recipients_(pair).map(function (e) { return { email: e }; }),
@@ -2324,8 +2339,8 @@ function templateContext_(pair, session) {
     cycleMonths: cyc ? cycleMonths_(cyc).map(function (m) { return m.label; }).join(' and ') : '',
     cycleDue: cyc ? prettyDate_(cyc.dueBy) : '',
     coordinator: CFG.coordinatorEmail, coordinatorName: CFG.coordinatorName,
-    bookingLink: CFG.webAppUrl || '(booking page)',
-    menteeLink: menteeLink_(mentee) || CFG.webAppUrl || '(booking page)',
+    bookingLink: mentorLink_(mentor) || CFG.publicMentorUrl || '(booking page)',
+    menteeLink: menteeLink_(mentee) || CFG.publicStudentUrl || '(booking page)',
     feedbackLink: session ? feedbackLink_(session, pair) : (CFG.feedbackFormUrl || '')
   };
 }
@@ -2707,7 +2722,8 @@ function issueMenteeTokens() {
   log_('Tokens', 'Issued ' + made + ' mentee access links');
   notify_(made + ' private links created.\n\n' +
     'Each student now has an access_token on the Mentees tab. Their link is:\n\n' +
-    (CFG.webAppUrl || '<your web app URL>') + '?token=THEIR_TOKEN\n\n' +
+    (CFG.publicStudentUrl || CFG.webAppUrl || '<your public student URL>') +
+    '?token=THEIR_TOKEN\n\n' +
     'Use menu → "Email students their booking links" to send them, or copy one to test.\n\n' +
     'Treat these like passwords: the link is all somebody needs to see that ' +
     "student's sessions.");
@@ -2715,8 +2731,10 @@ function issueMenteeTokens() {
 }
 
 function menteeLink_(mentee) {
-  if (!CFG.webAppUrl || !mentee.access_token) return '';
-  return CFG.webAppUrl + '?token=' + mentee.access_token;
+  if (!mentee || !mentee.access_token) return '';
+  const base = CFG.publicStudentUrl || CFG.webAppUrl;
+  if (!base) return '';
+  return base + '?token=' + mentee.access_token;
 }
 
 /** Resolves whoever is asking into a single mentee, or an error. */
@@ -3150,7 +3168,7 @@ function sendCycleMail_(mentor, cycle, key, shortMonth) {
   ctx.minPerMonth = CFG.minSlotsPerMonth;
   ctx.coordinator = CFG.coordinatorEmail;
   ctx.coordinatorName = CFG.coordinatorName;
-  ctx.bookingLink = CFG.webAppUrl || '(booking page)';
+  ctx.bookingLink = mentorLink_(mentor) || CFG.publicMentorUrl || '(booking page)';
 
   MailApp.sendEmail({
     to: to.join(','), cc: CFG.coordinatorEmail,
@@ -3176,7 +3194,7 @@ function shell_(bodyHtml) {
          '<div style="font-size:12px;color:#6b7280">' + CFG.coordinatorName +
          ' &middot; <a href="mailto:' + CFG.coordinatorEmail + '" style="color:#3b4cca">' +
          CFG.coordinatorEmail + '</a>' +
-         (CFG.webAppUrl ? ' &middot; <a href="' + CFG.webAppUrl + '" style="color:#3b4cca">Booking page</a>' : '') +
+         (CFG.publicMentorUrl ? ' &middot; <a href="' + CFG.publicMentorUrl + '" style="color:#3b4cca">Booking page</a>' : '') +
          '</div></div>';
 }
 
@@ -3253,7 +3271,7 @@ function nudgeMentor_(s, pair, daysLeft) {
       ' left in the month.</p>' +
       '<p>Pick whatever date and time suits you from the afterschool slots. It takes a minute, ' +
       'and booking early means you get first choice.</p>' +
-      (CFG.webAppUrl ? '<p><a href="' + CFG.webAppUrl + '" style="background:#3b4cca;color:#fff;' +
+      (mentorLink_(mentor) ? '<p><a href="' + mentorLink_(mentor) + '" style="background:#3b4cca;color:#fff;' +
         'padding:10px 18px;border-radius:7px;text-decoration:none;display:inline-block">' +
         'Book your session</a></p>' : '') +
       '<p style="color:#6b7280">Sessions you still need to book this year: ' + unbooked + '</p>')
@@ -3278,7 +3296,7 @@ function askForCloseout_(s, pair) {
       '<ol><li>Did the session happen?</li><li>Roughly how long was it?</li>' +
       '<li>What did you work on?</li>' +
       '<li>Anything YMU should know or follow up on?</li></ol>' +
-      (CFG.webAppUrl ? '<p><a href="' + CFG.webAppUrl + '" style="background:#3b4cca;color:#fff;' +
+      (mentorLink_(mentor) ? '<p><a href="' + mentorLink_(mentor) + '" style="background:#3b4cca;color:#fff;' +
         'padding:10px 18px;border-radius:7px;text-decoration:none;display:inline-block">' +
         'Answer on the booking page</a></p>' : '<p>Just reply to this email.</p>'))
   });
@@ -3363,7 +3381,7 @@ function chaseIntake_(mentor, status, daysLeft) {
       'student, ' + what + '. ' + urgency + '</p>' +
       '<p>It takes about three minutes: your address so we can suggest the schools nearest ' +
       'you, which of those you could get to, and the times you are free.</p>' +
-      (CFG.webAppUrl ? '<p><a href="' + CFG.webAppUrl + '" style="background:#3b4cca;color:#fff;' +
+      (mentorLink_(mentor) ? '<p><a href="' + mentorLink_(mentor) + '" style="background:#3b4cca;color:#fff;' +
         'padding:10px 18px;border-radius:7px;text-decoration:none;display:inline-block">' +
         'Fill in your availability</a></p>' : '') +
       '<p style="color:#6b7280">If something is getting in the way, just reply to this email.</p>')

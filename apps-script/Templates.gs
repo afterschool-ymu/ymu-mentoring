@@ -286,8 +286,8 @@ function templateContext_(pair, session) {
     cycleMonths: cyc ? cycleMonths_(cyc).map(function (m) { return m.label; }).join(' and ') : '',
     cycleDue: cyc ? prettyDate_(cyc.dueBy) : '',
     coordinator: CFG.coordinatorEmail, coordinatorName: CFG.coordinatorName,
-    bookingLink: CFG.webAppUrl || '(booking page)',
-    menteeLink: menteeLink_(mentee) || CFG.webAppUrl || '(booking page)',
+    bookingLink: mentorLink_(mentor) || CFG.publicMentorUrl || '(booking page)',
+    menteeLink: menteeLink_(mentee) || CFG.publicStudentUrl || '(booking page)',
     feedbackLink: session ? feedbackLink_(session, pair) : (CFG.feedbackFormUrl || '')
   };
 }

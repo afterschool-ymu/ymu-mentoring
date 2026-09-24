@@ -235,7 +235,7 @@ function eventBody_(s, pair, date, time) {
       'from the school is there, the session does not go ahead — contact ' +
       CFG.coordinatorEmail + '.\n\n' +
       'To change this date, the mentor should use the booking page rather than ' +
-      'replying here.' + (CFG.webAppUrl ? '\n' + CFG.webAppUrl : ''),
+      'replying here.' + (mentorLink_(mentor) ? '\n' + mentorLink_(mentor) : ''),
     start: { dateTime: Utilities.formatDate(start, CFG.tz, "yyyy-MM-dd'T'HH:mm:ss"), timeZone: CFG.tz },
     end:   { dateTime: Utilities.formatDate(end,   CFG.tz, "yyyy-MM-dd'T'HH:mm:ss"), timeZone: CFG.tz },
     attendees: recipients_(pair).map(function (e) { return { email: e }; }),

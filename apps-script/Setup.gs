@@ -227,8 +227,12 @@ function loadMentors() {
    ==================================================================== */
 
 function mentorLink_(mentor) {
-  if (!CFG.webAppUrl || !mentor.access_token) return '';
-  return CFG.webAppUrl + '?m=' + mentor.access_token;
+  if (!mentor || !mentor.access_token) return '';
+  const base = CFG.publicMentorUrl || CFG.webAppUrl;
+  if (!base) return '';
+  // The public address takes ?token=; the shim forwards it on as ?m=.
+  const param = CFG.publicMentorUrl ? 'token' : 'm';
+  return base + '?' + param + '=' + mentor.access_token;
 }
 
 /** Creates a link for any mentor missing one. Safe to run again. */
@@ -243,7 +247,8 @@ function issueMentorTokens() {
   log_('Tokens', 'Issued ' + made + ' mentor links');
   notify_(made + ' mentor links created.\n\n' +
     'Each ambassador now has an access_token on the Mentors tab. Their link is:\n\n' +
-    (CFG.webAppUrl || '<your web app URL>') + '?m=THEIR_TOKEN\n\n' +
+    (CFG.publicMentorUrl || CFG.webAppUrl || '<your public mentor URL>') +
+    '?token=THEIR_TOKEN\n\n' +
     'Use menu -> "Email mentors their links" to send them.\n\n' +
     'Treat these like passwords: the link is all somebody needs to act as that ' +
     'ambassador. It shows no student contact details.');
@@ -255,7 +260,7 @@ function emailMentorLinks() {
   const rows = readTab_('Mentors').filter(function (m) {
     return (m.active === true || m.active === 'TRUE') && m.access_token && m.email;
   });
-  if (!CFG.webAppUrl) { notify_('Set CFG.webAppUrl first.'); return 0; }
+  if (!mentorLink_({ access_token: 'x' })) { notify_('Set publicMentorUrl or webAppUrl in Config first.'); return 0; }
 
   let sent = 0, skipped = [];
   rows.forEach(function (m) {
@@ -294,7 +299,9 @@ function emailMentorLinks() {
  * to a tab where they would sit in the file for good.
  */
 function showAllLinks() {
-  if (!CFG.webAppUrl) { notify_('Set CFG.webAppUrl in Config first.'); return; }
+  if (!CFG.publicMentorUrl && !CFG.webAppUrl) {
+    notify_('Set publicMentorUrl and publicStudentUrl in Config first.'); return;
+  }
 
   function rowsFor(tab, tokenParam, emailField) {
     return readTab_(tab)
@@ -303,7 +310,7 @@ function showAllLinks() {
         return {
           name: r.name,
           who: r[emailField] || '(no address on file)',
-          url: CFG.webAppUrl + '?' + tokenParam + '=' + r.access_token
+          url: (tokenParam === 'm' ? mentorLink_(r) : menteeLink_(r))
         };
       });
   }
@@ -503,8 +510,8 @@ function installTriggers() {
 
 /** Emails each student (and their guardian) their private booking link. */
 function emailMenteeLinks() {
-  if (!CFG.webAppUrl) {
-    notify_('Set webAppUrl in Config.gs first — the links are built from it.');
+  if (!CFG.publicStudentUrl && !CFG.webAppUrl) {
+    notify_('Set publicStudentUrl in Config.gs first — the links are built from it.');
     return 0;
   }
   let sent = 0, skipped = [];

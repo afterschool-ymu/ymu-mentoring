@@ -58,7 +58,15 @@ const CFG = {
   // ---- Plumbing -------------------------------------------------------
   calendarName: 'YMU Mentoring', // a dedicated calendar, created on setup
   tz: 'America/New_York',
-  webAppUrl: '',                 // paste your deployed web app URL here after step 6
+  // The deployed web app. Used to talk to the script itself.
+  webAppUrl: 'https://script.google.com/macros/s/AKfycbyHufj8WmvfVsRzhCirXimjUM0T-JKtPYYyxFJU93UUYjDm6CvfALCZagwIBdDw9o0N/exec',
+
+  // What goes in EMAILS. These are the stable public addresses, which forward
+  // to whatever webAppUrl currently is. Google issues a new /exec URL on every
+  // new deployment, so linking straight to it would break every link already
+  // sitting in a mentor's or a family's inbox. Change docs/config.js instead.
+  publicMentorUrl:  'https://afterschool-ymu.github.io/ymu-mentoring/mentor/',
+  publicStudentUrl: 'https://afterschool-ymu.github.io/ymu-mentoring/student/',
   feedbackFormUrl: ''            // only needed if you use your own form instead
 };
 
