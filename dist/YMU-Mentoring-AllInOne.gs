@@ -356,6 +356,7 @@ function onOpen() {
     .addItem('Create missing sessions', 'ensureSessions')
     .addItem('Create mentor links', 'issueMentorTokens')
     .addItem('Email mentors their links', 'emailMentorLinks')
+    .addItem('Show all links (do not send)', 'showAllLinks')
     .addItem('Create student booking links', 'issueMenteeTokens')
     .addItem('Email students their links', 'emailMenteeLinks')
     .addSeparator()
@@ -620,6 +621,75 @@ function emailMentorLinks() {
   notify_(sent + ' mentors emailed their link.' +
     (skipped.length ? '\n\nNo address on file for: ' + skipped.join(', ') : ''));
   return sent;
+}
+
+/**
+ * Every link, on screen, sending nothing.
+ *
+ * For checking the links yourself before any of them reach a family. The
+ * links are credentials, so this opens in a dialog rather than writing them
+ * to a tab where they would sit in the file for good.
+ */
+function showAllLinks() {
+  if (!CFG.webAppUrl) { notify_('Set CFG.webAppUrl in Config first.'); return; }
+
+  function rowsFor(tab, tokenParam, emailField) {
+    return readTab_(tab)
+      .filter(function (r) { return (r.active === true || r.active === 'TRUE') && r.access_token; })
+      .map(function (r) {
+        return {
+          name: r.name,
+          who: r[emailField] || '(no address on file)',
+          url: CFG.webAppUrl + '?' + tokenParam + '=' + r.access_token
+        };
+      });
+  }
+
+  const mentors = rowsFor('Mentors', 'm', 'email');
+  const mentees = rowsFor('Mentees', 'token', 'guardian_email');
+
+  function esc(t) {
+    return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+  }
+
+  function table(title, list, note) {
+    if (!list.length) {
+      return '<h3>' + esc(title) + '</h3><p class=none>Nobody yet. ' + esc(note) + '</p>';
+    }
+    return '<h3>' + esc(title) + ' <span class=n>' + list.length + '</span></h3>' +
+      list.map(function (r) {
+        return '<div class=row><div class=nm>' + esc(r.name) + '</div>' +
+          '<div class=em>' + esc(r.who) + '</div>' +
+          '<input readonly value="' + esc(r.url) + '" onclick="this.select()">' +
+          '<a href="' + esc(r.url) + '" target="_blank" rel="noopener">Test</a></div>';
+      }).join('');
+  }
+
+  const html =
+    '<style>' +
+    'body{font:13px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;' +
+    'margin:0;padding:16px;color:#16181d}' +
+    'h3{font-size:14px;margin:18px 0 8px}h3:first-of-type{margin-top:4px}' +
+    '.n{color:#6b7280;font-weight:400}' +
+    '.warn{background:#fdecea;color:#b3261e;border-radius:8px;padding:11px 13px;margin:0 0 14px}' +
+    '.row{display:grid;grid-template-columns:1fr 1fr 2.4fr auto;gap:8px;align-items:center;' +
+    'padding:6px 0;border-bottom:1px solid #eee}' +
+    '.nm{font-weight:600}.em{color:#6b7280;font-size:12px;overflow:hidden;text-overflow:ellipsis}' +
+    'input{width:100%;font:11px ui-monospace,Menlo,monospace;padding:6px 7px;' +
+    'border:1px solid #e3e6ea;border-radius:6px;background:#f6f7f9}' +
+    'a{font-size:12px;font-weight:600;color:#3b4cca;text-decoration:none;white-space:nowrap}' +
+    '.none{color:#6b7280}' +
+    '</style>' +
+    '<div class=warn><b>These links are passwords.</b> Anyone holding one can act as ' +
+    'that person. Nothing has been emailed — use the menu when you are ready.</div>' +
+    table('Mentors', mentors, 'Run "Create mentor links" first.') +
+    table('Students', mentees, 'Add students to the Mentees tab, then run "Create student booking links".');
+
+  SpreadsheetApp.getUi().showModalDialog(
+    HtmlService.createHtmlOutput(html).setWidth(900).setHeight(600),
+    'All access links — nothing sent');
 }
 
 /* ====================================================================
