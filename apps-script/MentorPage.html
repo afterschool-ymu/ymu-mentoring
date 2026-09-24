@@ -187,6 +187,11 @@
 //  it even inside a JS comment, which is exactly how this page once broke.)
 var DATA = <?!= JSON.stringify(data).replace(/</g, '\\u003c') ?>;
 
+// The link is the credential. It is injected by the server, NOT read from
+// window.location: this page runs inside a sandboxed iframe whose own URL
+// carries none of the original query parameters.
+var TOKEN = (DATA && DATA.token) ? DATA.token : '';
+
 function toast(msg, ms){
   var t = document.getElementById('toast');
   t.textContent = msg; t.classList.add('on');
@@ -215,8 +220,11 @@ function render(){
 
   if(d.error === 'signin'){
     document.getElementById('app').innerHTML =
-      '<div class="card"><h2>Please sign in</h2><p>Open this page while signed in to your ' +
-      'Google account so we know who you are.</p></div>';
+      '<div class="card"><h2>Please open your own link</h2>' +
+      '<p>Use the link in the email we sent you — it is what tells us who you are. ' +
+      'No sign-in needed, and it works on a phone.</p>' +
+      '<p>Lost it? Email <a href="mailto:' + esc(d.contact || '') + '">' +
+      esc(d.contact || 'YMU') + '</a> and we will send a fresh one.</p></div>';
     return;
   }
   if(d.error === 'unknown'){
@@ -370,10 +378,10 @@ function confirmBook(id, date, time){
     .withSuccessHandler(function(r){
       busy('s_' + id, false); toast(r.message, 6000);
       if(r.ok){ OPEN_BOOK = null; BOOK_DAY = null; }
-      if(r.data){ DATA = r.data; render(); }
+      if(r.data){ DATA = r.data; if(DATA.token) TOKEN = DATA.token; render(); }
     })
     .withFailureHandler(function(e){ busy('s_' + id, false); toast('Error: ' + e.message); })
-    .apiBook(id, date, time);
+    .apiBook(TOKEN, id, date, time);
 }
 
 function statusPill(s){
@@ -477,10 +485,10 @@ function saveAddress(){
   google.script.run
     .withSuccessHandler(function(r){
       busy('addrSpin', false); toast(r.message, 4500);
-      if(r.ok && r.data){ DATA = r.data; render(); }
+      if(r.ok && r.data){ DATA = r.data; if(DATA.token) TOKEN = DATA.token; render(); }
     })
     .withFailureHandler(function(e){ busy('addrSpin', false); toast('Error: ' + e.message); })
-    .apiSaveAddress(a, k);
+    .apiSaveAddress(TOKEN, a, k);
 }
 
 /* ---- Step 2 ---- */
@@ -535,10 +543,10 @@ function saveSites(){
   google.script.run
     .withSuccessHandler(function(r){
       busy('siteSpin', false); toast(r.message, 4500);
-      if(r.ok && r.data){ DATA = r.data; render(); }
+      if(r.ok && r.data){ DATA = r.data; if(DATA.token) TOKEN = DATA.token; render(); }
     })
     .withFailureHandler(function(e){ busy('siteSpin', false); toast('Error: ' + e.message); })
-    .apiSaveSites(ids);
+    .apiSaveSites(TOKEN, ids);
 }
 
 /* ---- Step 3: a real calendar ----
@@ -708,7 +716,7 @@ function loadMonth(siteId, n){
       CUR.grid = r.grid; CUR.counts = r.counts; render();
     })
     .withFailureHandler(function(e){ toast('Error: ' + e.message); })
-    .apiMonth(siteId, n);
+    .apiMonth(TOKEN, siteId, n);
 }
 
 /** Each tap saves immediately, so nothing is lost if they wander off. */
@@ -743,7 +751,7 @@ function tapTime(date, time){
       slot.picked = !want; day.pickedHere += want ? -1 : 1;
       toast('Error: ' + e.message); render();
     })
-    .apiToggleSlot(CUR.site, date, time, want);
+    .apiToggleSlot(TOKEN, CUR.site, date, time, want);
 }
 
 /** Keeps the month chips and the Finish button honest without a full reload. */
@@ -766,7 +774,7 @@ function finishIntake(){
                           DATA = r.data; render(); }
     })
     .withFailureHandler(function(e){ busy('finSpin', false); toast('Error: ' + e.message); })
-    .apiFinishIntake();
+    .apiFinishIntake(TOKEN);
 }
 
 function backToSites(){ CUR = {site:null, month:1, day:null, grid:null, counts:[]};
@@ -796,10 +804,10 @@ function cannotMake(id){
   google.script.run
     .withSuccessHandler(function(r){
       busy('s_' + id, false); toast(r.message, 7000);
-      if(r.data){ DATA = r.data; render(); }
+      if(r.data){ DATA = r.data; if(DATA.token) TOKEN = DATA.token; render(); }
     })
     .withFailureHandler(function(e){ busy('s_' + id, false); toast('Error: ' + e.message); })
-    .apiCannotMake(id, why);
+    .apiCannotMake(TOKEN, id, why);
 }
 
 function saveCloseout(id){
@@ -809,10 +817,10 @@ function saveCloseout(id){
   google.script.run
     .withSuccessHandler(function(r){
       busy('cs_' + id, false); toast(r.message);
-      if(r.data){ DATA = r.data; render(); }
+      if(r.data){ DATA = r.data; if(DATA.token) TOKEN = DATA.token; render(); }
     })
     .withFailureHandler(function(e){ busy('cs_' + id, false); toast('Error: ' + e.message); })
-    .apiCloseout(id, happened,
+    .apiCloseout(TOKEN, id, happened,
       document.getElementById('cm_' + id).value,
       document.getElementById('cw_' + id).value,
       document.getElementById('cf_' + id).value);

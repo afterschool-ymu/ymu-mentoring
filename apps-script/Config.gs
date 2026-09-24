@@ -70,7 +70,10 @@ const HEADERS = {
   Mentors: ['mentor_id','name','email','phone','grade','school','instruments',
             'skill_level','guardian1_name','guardian1_email','guardian2_name',
             'guardian2_email','travel_from','travel_kind','travel_lat','travel_lng',
-            'site_prefs','intake_done','last_intake_nudge','active'],
+            'site_prefs','intake_done','last_intake_nudge','active',
+            // Appended last on purpose: setCell_ maps fields to columns by
+            // position, so inserting anywhere else would shift live data.
+            'access_token'],
   // One row per specific date+time a mentor can do, at a specific school.
   Availability: ['mentor_id','site_id','date','time','added'],
   // Days no session may be scheduled. Blank site_id = district-wide.

@@ -60,9 +60,18 @@
   var go = document.getElementById('go');
   go.href = url;
 
-  // Carry through anything useful someone appended, e.g. ?as=student for testing.
-  var qs = window.location.search.replace(/^\?/, '');
-  if (qs) go.href = url + '?' + qs;
+  // A mentor's private link arrives as ?token= and goes on as ?m=, which is
+  // the parameter the web app resolves against the mentor roster. Keeping the
+  // two rosters on separate parameters means a token is never checked against
+  // the wrong one. Anything else is passed straight through.
+  var qs = new URLSearchParams(window.location.search);
+  var tok = qs.get('token');
+  if (tok) {
+    go.href = url + '?m=' + encodeURIComponent(tok);
+  } else {
+    var rest = qs.toString();
+    if (rest) go.href = url + '?' + rest;
+  }
 
   // Auto-forward, but leave the button for anyone the redirect misses
   // (in-app browsers occasionally swallow replace()).

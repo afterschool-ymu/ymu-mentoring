@@ -17,6 +17,8 @@ function onOpen() {
     .addItem('8. Import from the HTML tool…', 'showImportDialog')
     .addSeparator()
     .addItem('Create missing sessions', 'ensureSessions')
+    .addItem('Create mentor links', 'issueMentorTokens')
+    .addItem('Email mentors their links', 'emailMentorLinks')
     .addItem('Create student booking links', 'issueMenteeTokens')
     .addItem('Email students their links', 'emailMenteeLinks')
     .addSeparator()
@@ -211,6 +213,76 @@ function loadMentors() {
     'Also: skill_level is inferred from grade. Review it.\n\n' +
     'Coverage: ' + seed.length + ' ambassadors — ' + instrumentTally_(seed) + '.\n' +
     missingInstruments_(seed));
+}
+
+/* ====================================================================
+   Mentor access links
+
+   Google only tells a web app who the visitor is when that visitor is in
+   the same Workspace domain as the script owner. Ambassadors are on gmail,
+   icloud and school addresses, so for them the address arrives blank and
+   sign-in can never identify them. A private link carries the identity
+   instead, exactly as it already does for students.
+   ==================================================================== */
+
+function mentorLink_(mentor) {
+  if (!CFG.webAppUrl || !mentor.access_token) return '';
+  return CFG.webAppUrl + '?m=' + mentor.access_token;
+}
+
+/** Creates a link for any mentor missing one. Safe to run again. */
+function issueMentorTokens() {
+  let made = 0;
+  readTab_('Mentors').forEach(function (m) {
+    if (m.access_token) return;
+    setCell_('Mentors', m._row, 'access_token',
+      Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, '').slice(0, 8));
+    made++;
+  });
+  log_('Tokens', 'Issued ' + made + ' mentor links');
+  notify_(made + ' mentor links created.\n\n' +
+    'Each ambassador now has an access_token on the Mentors tab. Their link is:\n\n' +
+    (CFG.webAppUrl || '<your web app URL>') + '?m=THEIR_TOKEN\n\n' +
+    'Use menu -> "Email mentors their links" to send them.\n\n' +
+    'Treat these like passwords: the link is all somebody needs to act as that ' +
+    'ambassador. It shows no student contact details.');
+  return made;
+}
+
+/** Sends every active mentor their own link, with a parent copied in. */
+function emailMentorLinks() {
+  const rows = readTab_('Mentors').filter(function (m) {
+    return (m.active === true || m.active === 'TRUE') && m.access_token && m.email;
+  });
+  if (!CFG.webAppUrl) { notify_('Set CFG.webAppUrl first.'); return 0; }
+
+  let sent = 0, skipped = [];
+  rows.forEach(function (m) {
+    const to = [m.email, m.guardian1_email, m.guardian2_email]
+      .filter(function (x) { return x && /@/.test(x); });
+    if (!to.length) { skipped.push(m.name); return; }
+    MailApp.sendEmail({
+      to: to.join(','), name: CFG.coordinatorName,
+      subject: 'Your YMU mentoring link',
+      htmlBody: shell_(
+        '<p>Hi ' + String(m.name).split(' ')[0] + ',</p>' +
+        '<p>This is your own link for YMU mentoring. It is how you tell us which ' +
+        'schools you can get to and when you are free.</p>' +
+        '<p><a href="' + mentorLink_(m) + '" style="background:#3b4cca;color:#fff;' +
+        'padding:11px 20px;border-radius:8px;text-decoration:none;display:inline-block;' +
+        'font-weight:600">Open my page</a></p>' +
+        '<p style="color:#6b7280;font-size:13px">This link is personal to you — please ' +
+        'do not forward it. No sign-in needed; it works on a phone. If you lose it, ' +
+        'just ask us for a new one.</p>' +
+        '<p style="color:#6b7280;font-size:13px">Questions: ' +
+        '<a href="mailto:' + CFG.coordinatorEmail + '">' + CFG.coordinatorEmail + '</a></p>')
+    });
+    sent++;
+  });
+  log_('Tokens', 'Emailed ' + sent + ' mentor links');
+  notify_(sent + ' mentors emailed their link.' +
+    (skipped.length ? '\n\nNo address on file for: ' + skipped.join(', ') : ''));
+  return sent;
 }
 
 /* ====================================================================

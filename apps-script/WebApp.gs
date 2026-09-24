@@ -24,23 +24,29 @@
 function doGet(e) {
   e = e || {};
   const p = (e.parameter || {});
-  const wantsStudent = !!p.token || p.as === 'student';
+  // ?m= is the mentor's private link, ?token= the student's. Two parameters
+  // rather than one, so a token is never resolved against the wrong roster.
+  const mentorTok = String(p.m || '').trim();
+  const wantsStudent = (!!p.token || p.as === 'student') && !mentorTok;
 
   let file = 'MentorPage', data = null;
 
   if (wantsStudent) {
     file = 'MenteePage';
     data = menteeData_(e);
+    data.token = String(p.token || '').trim();
   } else {
-    data = mentorData_();
+    data = mentorData_(mentorTok);
     // Not on the mentor roster? They may still be a student or a guardian.
     if (data.error === 'unknown' || data.error === 'signin') {
       const asStudent = menteeData_(e);
       if (asStudent.mode === 'mentee' || asStudent.mode === 'menteeWaiting') {
         file = 'MenteePage';
         data = asStudent;
+        data.token = String(p.token || '').trim();
       }
     }
+    if (file === 'MentorPage') data.token = mentorTok;
   }
 
   const t = HtmlService.createTemplateFromFile(file);
@@ -56,14 +62,14 @@ function include(name) {
 }
 
 /** Everything the signed-in mentor is allowed to see, and nothing else. */
-function mentorData_() {
-  const email = String(Session.getActiveUser().getEmail() || '').toLowerCase();
-  if (!email) return { error: 'signin' };
-
-  const mentor = readTab_('Mentors').filter(function (m) {
-    return String(m.email || '').toLowerCase() === email;
-  })[0];
-  if (!mentor) return { error: 'unknown', email: email, contact: CFG.coordinatorEmail };
+function mentorData_(token) {
+  const found = mentorFrom_(token);
+  if (!found.ok) {
+    return found.error === 'signin'
+      ? { error: 'signin', contact: CFG.coordinatorEmail }
+      : { error: 'unknown', email: found.email || '', contact: CFG.coordinatorEmail };
+  }
+  const mentor = found.mentor;
 
   // Intake comes first. Until a mentor has told us where they travel from,
   // which schools they will go to, and when they are free, there is nothing
@@ -216,8 +222,8 @@ function intakeData_(mentor, intake) {
 }
 
 /** The calendar for one school in one month, with this mentor's picks marked. */
-function apiMonth(siteId, sessionNo) {
-  const me = whoAmI_();
+function apiMonth(tok, siteId, sessionNo) {
+  const me = whoAmI_(tok);
   if (!me.ok) return { ok: false, message: me.message };
   const prefs = String(me.mentor.site_prefs || '').split(',')
     .map(function (x) { return x.trim(); });
@@ -240,8 +246,8 @@ function apiMonth(siteId, sessionNo) {
  * Turns one specific date+time on or off. Saving per click rather than per
  * page means a mentor who wanders off halfway keeps everything they ticked.
  */
-function apiToggleSlot(siteId, date, time, on) {
-  const me = whoAmI_();
+function apiToggleSlot(tok, siteId, date, time, on) {
+  const me = whoAmI_(tok);
   if (!me.ok) return { ok: false, message: me.message };
   const prefs = String(me.mentor.site_prefs || '').split(',')
     .map(function (x) { return x.trim(); });
@@ -284,8 +290,8 @@ function apiToggleSlot(siteId, date, time, on) {
 }
 
 /** They say they are finished — checked properly before we believe it. */
-function apiFinishIntake() {
-  const me = whoAmI_();
+function apiFinishIntake(tok) {
+  const me = whoAmI_(tok);
   if (!me.ok) return { ok: false, message: me.message };
   const st = intakeStatus(me.mentor.mentor_id);
   if (!st.complete) {
@@ -298,12 +304,12 @@ function apiFinishIntake() {
     notifyIntakeComplete_(me.mentor, st);
   }
   return { ok: true, message: 'All done — thank you. We will let you know who you are paired with.',
-           data: mentorData_() };
+           data: mentorData_(tok) };
 }
 
 /** Step 1 — geocode where they'll be travelling from. */
-function apiSaveAddress(address, kind) {
-  const me = whoAmI_();
+function apiSaveAddress(tok, address, kind) {
+  const me = whoAmI_(tok);
   if (!me.ok) return { ok: false, message: me.message };
   address = String(address || '').trim();
   if (address.length < 6) {
@@ -318,12 +324,12 @@ function apiSaveAddress(address, kind) {
   setCell_('Mentors', me.mentor._row, 'travel_lat', pt.lat);
   setCell_('Mentors', me.mentor._row, 'travel_lng', pt.lng);
   log_('Intake', me.mentor.name + ' set travel origin (' + kind + ')');
-  return { ok: true, message: 'Found it. Here are your nearest schools.', data: mentorData_() };
+  return { ok: true, message: 'Found it. Here are your nearest schools.', data: mentorData_(tok) };
 }
 
 /** Step 2 — which schools they're willing to travel to. */
-function apiSaveSites(siteIds) {
-  const me = whoAmI_();
+function apiSaveSites(tok, siteIds) {
+  const me = whoAmI_(tok);
   if (!me.ok) return { ok: false, message: me.message };
   siteIds = (siteIds || []).filter(Boolean);
   if (!siteIds.length) return { ok: false, message: 'Choose at least one school.' };
@@ -332,7 +338,7 @@ function apiSaveSites(siteIds) {
   }
   setCell_('Mentors', me.mentor._row, 'site_prefs', siteIds.join(', '));
   log_('Intake', me.mentor.name + ' chose ' + siteIds.length + ' schools');
-  return { ok: true, message: 'Saved. Now tell us when you are free.', data: mentorData_() };
+  return { ok: true, message: 'Saved. Now tell us when you are free.', data: mentorData_(tok) };
 }
 
 function notifyIntakeComplete_(mentor, status) {
@@ -359,8 +365,8 @@ function notifyIntakeComplete_(mentor, status) {
  * choosing, so this path is for genuine changes — and it is where the
  * two-hour reschedule rule bites.
  */
-function apiBook(sessionId, date, time) {
-  const guard = ownsSession_(sessionId);
+function apiBook(tok, sessionId, date, time) {
+  const guard = ownsSession_(tok, sessionId);
   if (!guard.ok) return { ok: false, message: guard.message };
   if (!date || !time) {
     // Releasing a date without replacing it is the one thing a mentor cannot
@@ -371,12 +377,12 @@ function apiBook(sessionId, date, time) {
   }
   const res = bookSession(sessionId, date, time, { pickedBy: 'mentor' });
   return { ok: res.ok, message: res.message,
-           needsMoreAvailability: !!res.needsMoreAvailability, data: mentorData_() };
+           needsMoreAvailability: !!res.needsMoreAvailability, data: mentorData_(tok) };
 }
 
 /** The escape hatch: no available date works, so a human takes over. */
-function apiCannotMake(sessionId, reason) {
-  const guard = ownsSession_(sessionId);
+function apiCannotMake(tok, sessionId, reason) {
+  const guard = ownsSession_(tok, sessionId);
   if (!guard.ok) return { ok: false, message: guard.message };
   const s = guard.session, pair = guard.pair;
 
@@ -403,12 +409,12 @@ function apiCannotMake(sessionId, reason) {
   log_('Escalation', guard.mentor.name + ' cannot make ' + s.month);
   return { ok: true, message: 'Thanks — we have been told and will be in touch. ' +
            'Your existing booking stays in place until we agree a new one.',
-           data: mentorData_() };
+           data: mentorData_(tok) };
 }
 
 /** Saves the four closeout answers. */
-function apiCloseout(sessionId, happened, minutes, workedOn, followUp) {
-  const guard = ownsSession_(sessionId);
+function apiCloseout(tok, sessionId, happened, minutes, workedOn, followUp) {
+  const guard = ownsSession_(tok, sessionId);
   if (!guard.ok) return { ok: false, message: guard.message };
 
   const s = guard.session;
@@ -436,23 +442,51 @@ function apiCloseout(sessionId, happened, minutes, workedOn, followUp) {
         '. Worked on: ' + (workedOn || '—') + '</p></div>'
     });
   }
-  return { ok: true, message: 'Thank you — saved.', data: mentorData_() };
+  return { ok: true, message: 'Thank you — saved.', data: mentorData_(tok) };
 }
 
-/** Who is signed in, resolved against the roster. */
-function whoAmI_() {
+/**
+ * Resolves whoever is asking into one mentor.
+ *
+ * The private link comes first and is what nearly everyone uses. Google only
+ * hands a web app the visitor's address when that visitor is inside the same
+ * Workspace domain as the script owner, so for ambassadors on gmail, icloud
+ * or a school address, Session.getActiveUser().getEmail() is a blank string.
+ * Sign-in still works, and is the path the coordinator takes.
+ */
+function mentorFrom_(token) {
+  const rows = readTab_('Mentors');
+  token = String(token || '').trim();
+
+  if (token) {
+    const byLink = rows.filter(function (m) {
+      return String(m.access_token || '').trim() === token;
+    })[0];
+    if (byLink) return { ok: true, mentor: byLink, via: 'link' };
+    return { ok: false, error: 'unknown', email: '' };
+  }
+
   const email = String(Session.getActiveUser().getEmail() || '').toLowerCase();
-  if (!email) return { ok: false, message: 'Please sign in with your Google account.' };
-  const mentor = readTab_('Mentors').filter(function (m) {
+  if (!email) return { ok: false, error: 'signin' };
+  const byEmail = rows.filter(function (m) {
     return String(m.email || '').toLowerCase() === email;
   })[0];
-  if (!mentor) return { ok: false, message: 'We do not recognise this account.' };
-  return { ok: true, mentor: mentor, email: email };
+  if (byEmail) return { ok: true, mentor: byEmail, via: 'google', email: email };
+  return { ok: false, error: 'unknown', email: email };
+}
+
+/** Who is asking, for the action endpoints. */
+function whoAmI_(token) {
+  const found = mentorFrom_(token);
+  if (found.ok) return { ok: true, mentor: found.mentor, email: found.email || '' };
+  return { ok: false, message: found.error === 'signin'
+    ? 'We could not tell who you are. Please reopen the link from your email.'
+    : 'We do not recognise this link or account.' };
 }
 
 /** Nobody may touch a session that is not theirs. */
-function ownsSession_(sessionId) {
-  const me = whoAmI_();
+function ownsSession_(tok, sessionId) {
+  const me = whoAmI_(tok);
   if (!me.ok) return { ok: false, message: me.message };
   const mentor = me.mentor;
 

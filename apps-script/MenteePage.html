@@ -148,10 +148,10 @@
 // (Do not write that tag literally in this comment: the HTML parser acts on
 //  it even inside a JS comment, which is exactly how this page once broke.)
 var DATA = <?!= JSON.stringify(data).replace(/</g, '\\u003c') ?>;
-var TOKEN = (function(){
-  var m = String(window.location.search || '').match(/[?&]token=([^&]+)/);
-  return m ? decodeURIComponent(m[1]) : '';
-})();
+// Injected by the server. window.location is NOT usable here: this page runs
+// in a sandboxed iframe whose URL carries none of the original parameters,
+// so reading the token from it always produced an empty string.
+var TOKEN = (DATA && DATA.token) ? DATA.token : '';
 
 function toast(msg, ms){
   var t = document.getElementById('toast');
@@ -356,7 +356,7 @@ function pick(id, date, time){
       if(el) el.textContent = '';
       toast(r.message, 6500);
       if(r.ok){ OPEN = null; PICKDAY = null; }
-      if(r.data){ DATA = r.data; render(); }
+      if(r.data){ DATA = r.data; if(DATA.token) TOKEN = DATA.token; render(); }
     })
     .withFailureHandler(function(e){
       document.querySelectorAll('button').forEach(function(b){ b.disabled = false; });
