@@ -16,6 +16,7 @@ function onOpen() {
     .addItem('7. Create the feedback form', 'createFeedbackForm')
     .addItem('8. Import from the HTML tool…', 'showImportDialog')
     .addSeparator()
+    .addItem('Suggest pairings', 'suggestPairings')
     .addItem('Create missing sessions', 'ensureSessions')
     .addItem('Create mentor links', 'issueMentorTokens')
     .addItem('Email mentors their links', 'emailMentorLinks')
