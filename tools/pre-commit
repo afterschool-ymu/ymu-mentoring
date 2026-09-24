@@ -32,6 +32,22 @@ if [ -n "$emails" ]; then
   fail=1
 fi
 
+# A literal closing script tag inside an inline <script> block ends that block
+# early, even in a JS comment or a string. Apps Script then refuses the whole
+# page with "Malformed HTML content", which points at the end of the file
+# rather than the real cause. This check counts openers against closers.
+for f in $(git diff --cached --name-only --diff-filter=ACM | grep '\.html$'); do
+  [ -f "$f" ] || continue
+  open=$(grep -c '<script' "$f" || true)
+  close=$(grep -c '</script>' "$f" || true)
+  if [ "$open" != "$close" ]; then
+    echo "BLOCKED: $f has $open <script> openers but $close closers."
+    echo "  A stray closing script tag (often inside a comment or string) breaks"
+    echo "  the page. Write it escaped, or describe it in words."
+    fail=1
+  fi
+done
+
 if [ "$fail" = 1 ]; then
   cat <<'MSG'
 

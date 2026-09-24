@@ -181,8 +181,10 @@
 <div id="toast"></div>
 
 <script>
-// JSON.stringify does not escape '<'. A mentor typing '</script>' into the
-// closeout box would otherwise terminate this tag and blank their own page.
+// JSON.stringify does not escape '<'. Without this, a closing script tag
+// typed into the closeout box would end this block early.
+// (Do not write that tag literally in this comment: the HTML parser acts on
+//  it even inside a JS comment, which is exactly how this page once broke.)
 var DATA = <?!= JSON.stringify(data).replace(/</g, '\\u003c') ?>;
 
 function toast(msg, ms){
