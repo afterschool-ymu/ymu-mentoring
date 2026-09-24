@@ -343,7 +343,7 @@ function onOpen() {
     .createMenu('YMU Mentoring')
     .addItem('1. Set up workbook', 'setupWorkbook')
     .addItem('2. Load the 12 school sites', 'loadSites')
-    .addItem('3. Load the 15 ambassadors', 'loadMentors')
+    .addItem('3. Load the ambassadors', 'loadMentors')
     .addItem('4. Locate the schools (for distance)', 'geocodeSites')
     .addItem('5. Load the school-year calendar', 'loadClosures')
     .addItem('6. Load the message templates', 'loadTemplates')
@@ -388,7 +388,7 @@ function setupWorkbook() {
 
   log_('Setup', 'Workbook and calendar ready');
   notify_(
-    'Workbook ready.\n\nNext: menu → "Load the 12 school sites", then "Load the 15 ambassadors".\n\n' +
+    'Workbook ready.\n\nNext: menu → "Load the 12 school sites", then "Load the ambassadors".\n\n' +
     'Calendar "' + CFG.calendarName + '" is created and all invites will go on it.');
 }
 
@@ -485,6 +485,29 @@ function loadSites() {
    ==================================================================== */
 
 
+/** "5 Voice, 5 Guitar, 2 Keys" — counted from the roster, never hardcoded. */
+function instrumentTally_(seed) {
+  const n = {};
+  seed.forEach(function (r) { n[r[1]] = (n[r[1]] || 0) + 1; });
+  return Object.keys(n).sort(function (a, b) { return n[b] - n[a] || a.localeCompare(b); })
+    .map(function (k) { return n[k] + ' ' + k; }).join(', ');
+}
+
+/**
+ * Instrument is the one non-negotiable matching rule, so a programme whose
+ * students play something no ambassador plays fails silently, every cycle.
+ * This says so out loud at load time.
+ */
+function missingInstruments_(seed) {
+  const have = {};
+  seed.forEach(function (r) { have[String(r[1]).toLowerCase()] = true; });
+  const wanted = ['Trumpet', 'Saxophone', 'Trombone', 'Violin'];
+  const gaps = wanted.filter(function (w) { return !have[w.toLowerCase()]; });
+  if (!gaps.length) return 'Every instrument the Jazz and Marching programmes need is covered.';
+  return 'No ' + gaps.join(', ') + ' — Jazz and Marching Band students cannot be matched ' +
+         'until you recruit for those, because instrument must match exactly.';
+}
+
 function gradeToLevel_(grade) {
   return ['Alumni', '12th', '11th'].indexOf(String(grade)) >= 0 ? 'Advanced' : 'Intermediate';
 }
@@ -520,8 +543,8 @@ function loadMentors() {
     '• Gabriel Bello-Diaz is in 8th grade — confirm he is mentoring, not being mentored.\n' +
     '• Gabriella Cimring — the roster spelled it "Cirming"; her email says Cimring.\n\n' +
     'Also: skill_level is inferred from grade. Review it.\n\n' +
-    'Coverage gap: these 15 are Voice, Guitar, Keys, Bass and Drums only. ' +
-    'No trumpet, sax, trombone or violin, so Jazz and Marching Band students cannot be matched.');
+    'Coverage: ' + seed.length + ' ambassadors — ' + instrumentTally_(seed) + '.\n' +
+    missingInstruments_(seed));
 }
 
 /* ====================================================================
