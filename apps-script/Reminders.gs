@@ -15,6 +15,11 @@
  * them an email ourselves.
  */
 
+/** Is today one of the weekdays we chase unfilled forms on? */
+function isChaseDay_() {
+  return (CFG.intakeChaseDays || [1, 3, 5]).indexOf(new Date().getDay()) >= 0;
+}
+
 /**
  * The reminder rungs, derived from CFG.remindDaysBefore so the two cannot
  * drift apart.
@@ -146,7 +151,7 @@ function dailyTick() {
     const left = daysBetween_(today, cycNow ? cycNow.dueBy : CFG.intakeDeadline);
     const since = m.last_intake_nudge
       ? daysBetween_(String(m.last_intake_nudge).slice(0, 10), today) : 999;
-    if (since >= CFG.renudgeEveryDays) {
+    if (since >= (CFG.intakeChaseEveryDays || 1)) {
       chaseIntake_(m, st, left);
       summary.intake++;
     }
@@ -211,7 +216,7 @@ function runCycleRollover_(today, summary) {
     // 1 & 2 — ask, then keep asking.
     const since = logRow.prompted_on
       ? daysBetween_(String(logRow.prompted_on).slice(0, 10), today) : 999;
-    if (!dueGone && since >= CFG.renudgeEveryDays) {
+    if (!dueGone && since >= (CFG.intakeChaseEveryDays || 1) && isChaseDay_()) {
       if (sendCycleMail_(m, cycle, 'cycle_open')) {
         markCycle_(m.mentor_id, cycle.id, 'prompted_on');
         summary.cycle++;
@@ -485,8 +490,7 @@ function chaseIntake_(mentor, status, daysLeft) {
   if (automationIsPaused_()) return false;   // safety switch
   // Only on the weekdays the coordinator chose. Chasing a teenager every single
   // day is how they learn to ignore you.
-  const dow = new Date().getDay();
-  if ((CFG.intakeChaseDays || [1, 3, 5]).indexOf(dow) < 0) return false;
+  if (!isChaseDay_()) return false;
   const to = [mentor.email, mentor.guardian1_email, mentor.guardian2_email]
     .filter(function (e) { return e && /@/.test(e); });
   if (!to.length) return;

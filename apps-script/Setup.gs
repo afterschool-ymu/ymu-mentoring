@@ -599,7 +599,12 @@ function installTriggers() {
   log_('Setup', 'Triggers installed');
   notify_(
     'Automation installed.\n\n' +
-    '• Daily at ' + CFG.dailyHour + ':00 — reminders, chasing, cycle rollover, and your summary\n' +
+    '• Runs every day at ' + CFG.dailyHour + ':00 (Google starts it within the hour).\n' +
+      '  Session reminders go out ' + (CFG.remindDaysBefore || []).join(', ') +
+      ' days before, and on the morning.\n' +
+      '  Mentors who have not filled in their form are chased only on: ' +
+      (CFG.intakeChaseDays || []).map(function (d) {
+        return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d]; }).join(', ') + '.\n' +
       (CFG.automationPaused
         ? '\n*** PAUSED: nothing will be emailed to mentors or families. ***\n'
         : '\n*** LIVE: real mentors and families will receive email. ***\n') +

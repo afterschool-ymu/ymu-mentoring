@@ -54,6 +54,10 @@ const CFG = {
   intakeChaseDays: [1, 3, 5],
   nudgeWithinDays: 21,           // start chasing unbooked sessions this close to month end
   renudgeEveryDays: 7,           // then chase again this often
+  // Chasing an unfilled form is governed by intakeChaseDays above, not by a
+  // day count. Leave this at 1 so the weekday list is what decides; raising it
+  // would silently override those days.
+  intakeChaseEveryDays: 1,
   chaseCloseoutAfterDays: 1,     // days after a session before asking how it went
   feedbackMinutesBeforeEnd: 5,   // form goes out this long before a session finishes
 

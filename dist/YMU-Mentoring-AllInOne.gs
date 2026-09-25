@@ -68,6 +68,10 @@ const CFG = {
   intakeChaseDays: [1, 3, 5],
   nudgeWithinDays: 21,           // start chasing unbooked sessions this close to month end
   renudgeEveryDays: 7,           // then chase again this often
+  // Chasing an unfilled form is governed by intakeChaseDays above, not by a
+  // day count. Leave this at 1 so the weekday list is what decides; raising it
+  // would silently override those days.
+  intakeChaseEveryDays: 1,
   chaseCloseoutAfterDays: 1,     // days after a session before asking how it went
   feedbackMinutesBeforeEnd: 5,   // form goes out this long before a session finishes
 
@@ -962,7 +966,12 @@ function installTriggers() {
   log_('Setup', 'Triggers installed');
   notify_(
     'Automation installed.\n\n' +
-    '• Daily at ' + CFG.dailyHour + ':00 — reminders, chasing, cycle rollover, and your summary\n' +
+    '• Runs every day at ' + CFG.dailyHour + ':00 (Google starts it within the hour).\n' +
+      '  Session reminders go out ' + (CFG.remindDaysBefore || []).join(', ') +
+      ' days before, and on the morning.\n' +
+      '  Mentors who have not filled in their form are chased only on: ' +
+      (CFG.intakeChaseDays || []).map(function (d) {
+        return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d]; }).join(', ') + '.\n' +
       (CFG.automationPaused
         ? '\n*** PAUSED: nothing will be emailed to mentors or families. ***\n'
         : '\n*** LIVE: real mentors and families will receive email. ***\n') +
@@ -3346,6 +3355,11 @@ function notifyMentorOfPick_(pair, session, date, time) {
  * them an email ourselves.
  */
 
+/** Is today one of the weekdays we chase unfilled forms on? */
+function isChaseDay_() {
+  return (CFG.intakeChaseDays || [1, 3, 5]).indexOf(new Date().getDay()) >= 0;
+}
+
 /**
  * The reminder rungs, derived from CFG.remindDaysBefore so the two cannot
  * drift apart.
@@ -3477,7 +3491,7 @@ function dailyTick() {
     const left = daysBetween_(today, cycNow ? cycNow.dueBy : CFG.intakeDeadline);
     const since = m.last_intake_nudge
       ? daysBetween_(String(m.last_intake_nudge).slice(0, 10), today) : 999;
-    if (since >= CFG.renudgeEveryDays) {
+    if (since >= (CFG.intakeChaseEveryDays || 1)) {
       chaseIntake_(m, st, left);
       summary.intake++;
     }
@@ -3542,7 +3556,7 @@ function runCycleRollover_(today, summary) {
     // 1 & 2 — ask, then keep asking.
     const since = logRow.prompted_on
       ? daysBetween_(String(logRow.prompted_on).slice(0, 10), today) : 999;
-    if (!dueGone && since >= CFG.renudgeEveryDays) {
+    if (!dueGone && since >= (CFG.intakeChaseEveryDays || 1) && isChaseDay_()) {
       if (sendCycleMail_(m, cycle, 'cycle_open')) {
         markCycle_(m.mentor_id, cycle.id, 'prompted_on');
         summary.cycle++;
@@ -3816,8 +3830,7 @@ function chaseIntake_(mentor, status, daysLeft) {
   if (automationIsPaused_()) return false;   // safety switch
   // Only on the weekdays the coordinator chose. Chasing a teenager every single
   // day is how they learn to ignore you.
-  const dow = new Date().getDay();
-  if ((CFG.intakeChaseDays || [1, 3, 5]).indexOf(dow) < 0) return false;
+  if (!isChaseDay_()) return false;
   const to = [mentor.email, mentor.guardian1_email, mentor.guardian2_email]
     .filter(function (e) { return e && /@/.test(e); });
   if (!to.length) return;
