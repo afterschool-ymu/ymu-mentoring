@@ -55,6 +55,13 @@ const CFG = {
   coordinatorName: 'YMU Afterschool',
   managerDigest: true,           // daily summary email to the coordinator
 
+  // ---- Automation safety ----------------------------------------------
+  // Nothing automated goes out while this is true. The daily job still runs
+  // and still reports what it WOULD have sent, so you can watch the system
+  // work against real data without anyone receiving anything.
+  automationPaused: false,
+  dailyHour: 6,                  // 24h, in CFG.tz. 6 means the 6am run.
+
   // ---- Plumbing -------------------------------------------------------
   calendarName: 'YMU Mentoring', // a dedicated calendar, created on setup
   tz: 'America/New_York',

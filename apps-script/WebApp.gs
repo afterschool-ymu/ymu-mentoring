@@ -289,6 +289,58 @@ function apiToggleSlot(tok, siteId, date, time, on) {
   return { ok: true, counts: counts, complete: after.complete };
 }
 
+/**
+ * Clears one month at one school so a mentor can redo it.
+ *
+ * Asked for by a mentor who could not tell what he had already chosen and
+ * wanted to start over. Scoped to the month on screen: "start again" almost
+ * always means this month, not the whole year.
+ */
+function apiClearMonth(tok, siteId, sessionNo) {
+  const me = whoAmI_(tok);
+  if (!me.ok) return { ok: false, message: me.message };
+
+  const prefs = String(me.mentor.site_prefs || '').split(',')
+    .map(function (x) { return x.trim(); });
+  if (prefs.indexOf(siteId) < 0) return { ok: false, message: 'Not one of your schools.' };
+
+  const sm = monthInfo_(Number(sessionNo));
+  if (!sm) return { ok: false, message: 'Unknown month.' };
+  const year = CFG.schoolYearStart + sm.y;
+  const prefix = year + '-' + (sm.m < 10 ? '0' : '') + sm.m + '-';
+
+  // A time their own session is booked on is not theirs to withdraw.
+  const booked = readTab_('Sessions').filter(function (ss) {
+    if (['completed', 'missed'].indexOf(ss.status) >= 0) return false;
+    if (String(isoOf_(ss.date) || '').indexOf(prefix) !== 0) return false;
+    return getPair_(ss.pair_id).mentor_id === me.mentor.mentor_id;
+  });
+
+  const sh = sheet_('Availability');
+  let gone = 0;
+  availabilityFor(me.mentor.mentor_id, siteId)
+    .filter(function (a) {
+      if (a.date.indexOf(prefix) !== 0) return false;
+      return !booked.some(function (b) {
+        return isoOf_(b.date) === a.date && b.time === a.time;
+      });
+    })
+    .sort(function (a, b) { return b._row - a._row; })
+    .forEach(function (a) { sh.deleteRow(a._row); gone++; });
+
+  setCell_('Mentors', me.mentor._row, 'intake_done', '');
+  log_('Reset', me.mentor.name + ' cleared ' + gone + ' times in ' + sm.label);
+
+  return {
+    ok: true,
+    message: 'Cleared ' + gone + ' time' + (gone === 1 ? '' : 's') + ' in ' + sm.label +
+      (booked.length ? '. Kept the ' + booked.length + ' you have a session booked on.' : '.'),
+    grid: buildMonth(siteId, Number(sessionNo),
+                     { picked: pickedMap_(me.mentor.mentor_id, siteId) }),
+    counts: monthlyCounts(me.mentor.mentor_id, siteId)
+  };
+}
+
 /** They say they are finished — checked properly before we believe it. */
 function apiFinishIntake(tok) {
   const me = whoAmI_(tok);

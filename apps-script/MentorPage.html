@@ -676,7 +676,57 @@ function calendarHtml(){
         }).join('') + '</div></div>';
     }
   }
+  h += pickedSummary(g);
   return h;
+}
+
+/**
+ * What they have already chosen, written out.
+ *
+ * The calendar marks a chosen day with a small counter, which is easy to miss
+ * and never says WHICH times. A mentor reopening the form a week later could
+ * not tell what they had done, so could not tell what was left to do.
+ */
+function pickedSummary(g){
+  var days = [];
+  g.weeks.forEach(function(w){ w.forEach(function(d){
+    if(!d) return;
+    var mine = d.times.filter(function(t){ return t.picked; });
+    if(mine.length) days.push({ date:d.date, times:mine.map(function(t){ return t.time; }) });
+  }); });
+
+  if(!days.length){
+    return '<div class="prob" style="margin-top:12px">Nothing chosen for ' +
+      esc(g.label) + ' yet. Tap a day above, then the times you could make.</div>';
+  }
+
+  var total = days.reduce(function(n,d){ return n + d.times.length; }, 0);
+  return '<div class="daypanel" style="margin-top:12px;background:var(--ok-soft);' +
+    'border-color:var(--ok)">' +
+    '<b>Your ' + esc(g.label) + ' times</b> <span class="sub">(' + total + ' in total)</span>' +
+    '<div style="margin-top:8px">' +
+    days.map(function(d){
+      return '<div style="padding:3px 0;font-size:13.5px"><b>' +
+        esc(prettyLocal(d.date)) + '</b> \u2014 ' + d.times.map(esc).join(', ') + '</div>';
+    }).join('') +
+    '</div>' +
+    '<button class="ghost" style="margin-top:10px" onclick="clearMonth()">' +
+    'Clear ' + esc(g.label) + ' and start again</button> ' +
+    '<span class="spin" id="clrSpin"></span></div>';
+}
+
+function clearMonth(){
+  if(!confirm('Remove every time you have chosen for this month at this school?\n\n' +
+              'Other months are not affected. Any session already booked stays.')) return;
+  busy('clrSpin', true, 'Clearing\u2026');
+  google.script.run
+    .withSuccessHandler(function(r){
+      busy('clrSpin', false);
+      toast(r.message, 5000);
+      if(r.ok){ CUR.grid = r.grid; CUR.counts = r.counts; CUR.day = null; refreshChips(); }
+    })
+    .withFailureHandler(function(e){ busy('clrSpin', false); toast('Error: ' + e.message); })
+    .apiClearMonth(TOKEN, CUR.site, CUR.month);
 }
 
 function prettyLocal(iso){

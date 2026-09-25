@@ -21,9 +21,11 @@ function onOpen() {
     .addItem('Create mentor links', 'issueMentorTokens')
     .addItem('Email mentors their links', 'emailMentorLinks')
     .addItem('Show all links (do not send)', 'showAllLinks')
+    .addItem('Reset a mentor\u2019s availability', 'resetMentorAvailability')
     .addItem('Create student booking links', 'issueMenteeTokens')
     .addItem('Email students their links', 'emailMenteeLinks')
     .addSeparator()
+    .addItem('Pause / resume automation', 'toggleAutomation')
     .addItem('Install automation', 'installTriggers')
     .addItem('Run the daily job now (test)', 'dailyTick')
     .addItem('Send due feedback forms now (test)', 'feedbackTick')
@@ -364,6 +366,100 @@ function showAllLinks() {
 }
 
 /* ====================================================================
+   Safety switch
+
+   Installing the triggers is what turns a test system into a live one:
+   the daily job chases every mentor who has not filled in their form.
+   This makes that a decision you take on purpose.
+   ==================================================================== */
+
+function automationIsPaused_() {
+  const flag = PropertiesService.getScriptProperties().getProperty('automationPaused');
+  if (flag === 'true') return true;
+  if (flag === 'false') return false;
+  return !!CFG.automationPaused;          // falls back to the file default
+}
+
+function toggleAutomation() {
+  const ui = SpreadsheetApp.getUi();
+  const paused = automationIsPaused_();
+  const answer = ui.alert(
+    paused ? 'Resume automation?' : 'Pause automation?',
+    paused
+      ? 'Reminders, chases and cycle emails will start going out again to real ' +
+        'mentors and families.\n\nResume?'
+      : 'Nothing automated will be emailed to mentors or families.\n\n' +
+        'The daily job still runs and still reports what it WOULD have sent, so ' +
+        'you can keep testing against real data.\n\nPause?',
+    ui.ButtonSet.YES_NO);
+  if (answer !== ui.Button.YES) return;
+
+  PropertiesService.getScriptProperties()
+    .setProperty('automationPaused', paused ? 'false' : 'true');
+  log_('Automation', paused ? 'Resumed' : 'Paused');
+  notify_(paused
+    ? 'Automation resumed. Real email will go out on the next daily run.'
+    : 'Automation paused. Nothing will be emailed until you resume.\n\n' +
+      'Calendar invitations from a booking still go out — those come from ' +
+      'Google when the event is created, not from the daily job.');
+}
+
+/**
+ * Wipes one mentor's offered times, so they can start their form again.
+ * Asked for by name rather than by id: the coordinator is reading an email
+ * from a person, not a row.
+ */
+function resetMentorAvailability() {
+  const ui = SpreadsheetApp.getUi();
+  const res = ui.prompt('Reset availability',
+    'Type the mentor’s name (or part of it).\n\n' +
+    'This clears every time they have offered, at every school, and reopens ' +
+    'their form. Their pairing and any booked sessions are NOT touched.',
+    ui.ButtonSet.OK_CANCEL);
+  if (res.getSelectedButton() !== ui.Button.OK) return;
+
+  const q = String(res.getResponseText() || '').trim().toLowerCase();
+  if (!q) return;
+  const hits = readTab_('Mentors').filter(function (m) {
+    return String(m.name || '').toLowerCase().indexOf(q) >= 0;
+  });
+  if (!hits.length) { notify_('No mentor matches "' + q + '".'); return; }
+  if (hits.length > 1) {
+    notify_('That matches ' + hits.length + ' mentors:\n\n' +
+      hits.map(function (m) { return '• ' + m.name; }).join('\n') +
+      '\n\nBe more specific.');
+    return;
+  }
+
+  const m = hits[0];
+  const rows = availabilityFor(m.mentor_id, null);
+  const booked = readTab_('Sessions').filter(function (s) {
+    if (['scheduled', 'rescheduled'].indexOf(s.status) < 0) return false;
+    return getPair_(s.pair_id).mentor_id === m.mentor_id;
+  });
+
+  const ok = ui.alert('Reset ' + m.name + '?',
+    'This removes ' + rows.length + ' offered time' + (rows.length === 1 ? '' : 's') +
+    ' across every school.' +
+    (booked.length
+      ? '\n\nThey have ' + booked.length + ' booked session' +
+        (booked.length === 1 ? '' : 's') + '. Those stay exactly as they are — ' +
+        'only the times on offer are cleared.'
+      : '') +
+    '\n\nGo ahead?', ui.ButtonSet.YES_NO);
+  if (ok !== ui.Button.YES) return;
+
+  const sh = sheet_('Availability');
+  rows.sort(function (a, b) { return b._row - a._row; })
+      .forEach(function (a) { sh.deleteRow(a._row); });
+  setCell_('Mentors', m._row, 'intake_done', '');
+
+  log_('Reset', m.name + ': cleared ' + rows.length + ' offered times');
+  notify_('Cleared ' + rows.length + ' times for ' + m.name + '.\n\n' +
+    'Their form is open again at the same link — nothing to resend.');
+}
+
+/* ====================================================================
    Import from the single-file HTML tool
    Paste the JSON from its "Save / Load" tab.
    ==================================================================== */
@@ -480,7 +576,7 @@ function installTriggers() {
     if (wanted.indexOf(t.getHandlerFunction()) >= 0) ScriptApp.deleteTrigger(t);
   });
 
-  ScriptApp.newTrigger('dailyTick').timeBased().atHour(6).everyDays(1)
+  ScriptApp.newTrigger('dailyTick').timeBased().atHour(CFG.dailyHour).everyDays(1)
     .inTimezone(CFG.tz).create();
 
   ScriptApp.newTrigger('feedbackTick').timeBased().everyMinutes(15).create();
@@ -503,7 +599,10 @@ function installTriggers() {
   log_('Setup', 'Triggers installed');
   notify_(
     'Automation installed.\n\n' +
-    '• Daily at 6am — reminders, chasing, cycle rollover, and your summary email\n' +
+    '• Daily at ' + CFG.dailyHour + ':00 — reminders, chasing, cycle rollover, and your summary\n' +
+      (CFG.automationPaused
+        ? '\n*** PAUSED: nothing will be emailed to mentors or families. ***\n'
+        : '\n*** LIVE: real mentors and families will receive email. ***\n') +
     '• Every 15 minutes — checks whether a session is finishing and sends the ' +
     'feedback form ' + CFG.feedbackMinutesBeforeEnd + ' minutes before the end' +
     formNote);

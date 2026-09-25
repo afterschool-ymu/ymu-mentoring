@@ -17,6 +17,11 @@
 
 function dailyTick() {
   const today = todayIso_();
+  // Paused means: do all the work, send nothing to mentors or families. The
+  // coordinator still gets the summary, so the system can be watched running
+  // against real data without anyone receiving anything.
+  const PAUSED = automationIsPaused_();
+  if (PAUSED) log_('Automation', 'Daily run in PAUSED mode — no mentor/family email');
   const sessions = readTab_('Sessions');
   const summary = { week: 0, day: 0, dayof: 0, nudge: 0, closeout: 0, intake: 0,
                     cycle: 0, carried: 0, short: 0, attention: [] };
@@ -287,6 +292,7 @@ function shell_(bodyHtml) {
 }
 
 function sendReminder_(s, pair, kind, away) {
+  if (automationIsPaused_()) return false;   // safety switch
   const mentor = getMentor_(pair.mentor_id);
   const mentee = getMentee_(pair.mentee_id);
   const site = getSite_(pair.site_id);
@@ -337,6 +343,7 @@ function row_(k, v) {
 
 /** Nudge goes to the mentor and their parents only — not the whole invite list. */
 function nudgeMentor_(s, pair, daysLeft) {
+  if (automationIsPaused_()) return false;   // safety switch
   const mentor = getMentor_(pair.mentor_id);
   const mentee = getMentee_(pair.mentee_id);
   const site = getSite_(pair.site_id);
@@ -367,6 +374,7 @@ function nudgeMentor_(s, pair, daysLeft) {
 }
 
 function askForCloseout_(s, pair) {
+  if (automationIsPaused_()) return false;   // safety switch
   const mentor = getMentor_(pair.mentor_id);
   const mentee = getMentee_(pair.mentee_id);
   const to = [mentor.email, mentor.guardian1_email]
@@ -443,6 +451,7 @@ function sendManagerDigest_(summary) {
 
 /** Chases a mentor who has not finished the availability form. */
 function chaseIntake_(mentor, status, daysLeft) {
+  if (automationIsPaused_()) return false;   // safety switch
   const to = [mentor.email, mentor.guardian1_email, mentor.guardian2_email]
     .filter(function (e) { return e && /@/.test(e); });
   if (!to.length) return;
