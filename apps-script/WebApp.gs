@@ -27,9 +27,22 @@ function doGet(e) {
   // ?m= is the mentor's private link, ?token= the student's. Two parameters
   // rather than one, so a token is never resolved against the wrong roster.
   const mentorTok = String(p.m || '').trim();
-  const wantsStudent = (!!p.token || p.as === 'student') && !mentorTok;
+  const panelTok  = String(p.panel || '').trim();
+  const wantsStudent = (!!p.token || p.as === 'student') && !mentorTok && !panelTok;
 
   let file = 'MentorPage', data = null;
+
+  // The coordinator's panel. Its own parameter and its own token, so a
+  // forwarded mentor or student link can never land here.
+  if (panelTok) {
+    const t = HtmlService.createTemplateFromFile('PanelPage');
+    const pd = panelData_(panelTok);
+    pd.token = pd.error ? '' : panelTok;
+    t.data = pd;
+    return t.evaluate().setTitle('YMU Mentoring — Panel')
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  }
 
   if (wantsStudent) {
     file = 'MenteePage';

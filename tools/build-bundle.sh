@@ -18,7 +18,7 @@ mkdir -p dist
   echo " */"
   echo
   for f in Config Setup Geo Closures Cycles Availability \
-           Scheduling Matching Templates Feedback MenteeApp Reminders WebApp; do
+           Scheduling Matching Panel Templates Feedback MenteeApp Reminders WebApp; do
     echo ""
     echo "/* ================================================================"
     echo "   $f.gs"

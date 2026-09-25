@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<base target="_top">
+<style>
+  :root{--bg:#f6f7f9;--panel:#fff;--ink:#16181d;--muted:#6b7280;--line:#e3e6ea;
+    --accent:#3b4cca;--accent-soft:#eef0ff;--ok:#1a7f4b;--ok-soft:#e8f6ee;
+    --warn:#9a6200;--warn-soft:#fdf3e0;--bad:#b3261e;--bad-soft:#fdecea}
+  @media (prefers-color-scheme:dark){:root{--bg:#14161a;--panel:#1c1f25;--ink:#e9ebef;
+    --muted:#9aa2ad;--line:#2c313a;--accent:#8b96ff;--accent-soft:#232842;
+    --ok:#66d19e;--ok-soft:#17301f;--warn:#e0b060;--warn-soft:#302614;
+    --bad:#f2857c;--bad-soft:#331c1a}}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);overflow-wrap:break-word;
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  .wrap{max-width:1080px;margin:0 auto;padding:20px 16px 70px}
+  h1{font-size:21px;margin:0 0 2px;letter-spacing:-.02em}
+  .sub{color:var(--muted);font-size:13px}
+  h2{font-size:15px;margin:26px 0 9px;letter-spacing:-.01em}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    padding:15px;margin-bottom:12px}
+  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:9px;margin:14px 0 4px}
+  .tile{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:12px 13px}
+  .tile b{display:block;font-size:24px;font-weight:650;letter-spacing:-.02em;line-height:1.15}
+  .tile span{color:var(--muted);font-size:12px}
+  .tile.good b{color:var(--ok)} .tile.bad b{color:var(--bad)} .tile.warn b{color:var(--warn)}
+  table{border-collapse:collapse;width:100%;font-size:13px}
+  th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;
+    color:var(--muted);border-bottom:1px solid var(--line);padding:7px 9px;font-weight:700}
+  td{padding:8px 9px;border-bottom:1px solid var(--line);vertical-align:top}
+  tr:last-child td{border-bottom:0}
+  .tw{overflow-x:auto;background:var(--panel);border:1px solid var(--line);border-radius:12px}
+  .pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11.5px;font-weight:650;
+    white-space:nowrap}
+  .p-ok{background:var(--ok-soft);color:var(--ok)}
+  .p-warn{background:var(--warn-soft);color:var(--warn)}
+  .p-bad{background:var(--bad-soft);color:var(--bad)}
+  .p-n{background:var(--accent-soft);color:var(--accent)}
+  .note{border-radius:10px;padding:12px 14px;font-size:13.5px;margin:0 0 12px}
+  .n-bad{background:var(--bad-soft);color:var(--bad)}
+  .n-warn{background:var(--warn-soft);color:var(--warn)}
+  .n-ok{background:var(--ok-soft);color:var(--ok)}
+  .n-info{background:var(--accent-soft);color:var(--accent)}
+  .muted{color:var(--muted);font-size:12.5px}
+  button{background:var(--accent);color:#fff;border:0;border-radius:8px;padding:10px 17px;
+    font:inherit;font-size:14px;font-weight:600;cursor:pointer}
+  button.ghost{background:transparent;color:var(--accent);border:1px solid var(--line)}
+  button:disabled{opacity:.5;cursor:default}
+  .bar{position:sticky;bottom:0;background:var(--panel);border-top:1px solid var(--line);
+    padding:12px 15px;margin:0 -15px -15px;border-radius:0 0 12px 12px;
+    display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .blocked{background:var(--warn-soft)}
+  .top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+  @media (pointer:coarse){button{min-height:44px}}
+  @media (max-width:560px){ th:nth-child(n+5), td:nth-child(n+5){display:none} }
+</style>
+</head>
+<body>
+<div class="wrap" id="app">Loading…</div>
+
+<script>
+var DATA = <?!= JSON.stringify(data).replace(/</g, '\\u003c') ?>;
+var TOKEN = (DATA && DATA.token) ? DATA.token : '';
+
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+
+function render(){
+  var d = DATA, app = document.getElementById('app');
+
+  if(d.error === 'denied' || !d.ok){
+    app.innerHTML = '<div class="card"><h2 style="margin-top:0">Not authorised</h2>' +
+      '<p>This panel needs the coordinator link. Open it from the spreadsheet: ' +
+      'menu &rarr; <b>Coordination panel</b>.</p></div>';
+    return;
+  }
+
+  var h = '<div class="top"><div>' +
+    '<h1>YMU Mentoring</h1>' +
+    '<div class="sub">' + esc(d.today) + ' &middot; cycle ' + esc(d.cycle.id) +
+    ' collecting ' + esc(d.cycle.months) + '</div></div>' +
+    '<button class="ghost" onclick="refresh()" id="rf">Refresh</button></div>';
+
+  h += d.cycle.daysLeft < 0
+    ? '<div class="note n-bad" style="margin-top:14px"><b>The deadline has passed.</b> ' +
+      'It was ' + esc(d.cycle.due) + ', ' + Math.abs(d.cycle.daysLeft) + ' days ago.</div>'
+    : '<div class="note n-warn" style="margin-top:14px">Availability is due <b>' +
+      esc(d.cycle.due) + '</b> — ' + d.cycle.daysLeft + ' day' +
+      (d.cycle.daysLeft === 1 ? '' : 's') + ' left.</div>';
+
+  if(d.paused){
+    h += '<div class="note n-info"><b>Automation is paused.</b> The daily job still runs ' +
+      'and still reports what it would have sent, but nothing reaches mentors or families.</div>';
+  }
+
+  var s = d.stats;
+  h += '<div class="tiles">' +
+    tile(s.done, 'forms finished', s.done ? 'good' : 'bad') +
+    tile(s.started, 'part way', 'warn') +
+    tile(s.mentors - s.done - s.started, 'not started', 'bad') +
+    tile(s.mentees, 'students') +
+    tile(s.pairs, 'pairs') +
+    tile(s.booked, 'sessions booked', 'good') +
+    tile(s.unbooked, 'need a time', s.unbooked ? 'warn' : '') +
+    '</div>';
+
+  h += gapsHtml(d.gaps);
+  h += proposalsHtml(d);
+  h += intakeHtml(d.intake);
+  h += upcomingHtml(d);
+  h += concernsHtml(d.concerns);
+
+  app.innerHTML = h;
+}
+
+function tile(n, label, cls){
+  return '<div class="tile ' + (cls||'') + '"><b>' + n + '</b><span>' + esc(label) + '</span></div>';
+}
+
+/* ---- the things that quietly break a month ---- */
+function gapsHtml(gaps){
+  if(!gaps.length){
+    return '<h2>Nothing needs fixing</h2><div class="note n-ok">No missing contacts, ' +
+      'no schools without hours, no orphaned sessions.</div>';
+  }
+  return '<h2>Needs fixing <span class="muted">' + gaps.length + '</span></h2>' +
+    gaps.map(function(g){
+      return '<div class="note ' + (g.level === 'bad' ? 'n-bad' : 'n-warn') + '">' +
+        '<b>' + esc(g.what) + '</b><div style="font-size:12.5px;margin-top:3px;opacity:.85">' +
+        esc(g.why) + '</div></div>';
+    }).join('');
+}
+
+/* ---- pairing ---- */
+function proposalsHtml(d){
+  var ps = d.proposals || [];
+  var fresh = ps.filter(function(p){ return p.kind === 'new'; });
+
+  var h = '<h2>Pairing</h2>';
+  if(!ps.length){
+    h += '<div class="card"><p style="margin:0">Nothing to pair yet. ' +
+      (d.stats.mentees ? 'No student and ambassador share an instrument.'
+                       : 'Add students to the Mentees tab first.') + '</p></div>';
+  } else {
+    h += '<div class="card" style="padding:0"><div class="tw" style="border:0">' +
+      '<table><thead><tr><th></th><th>Student</th><th>Ambassador</th><th>Score</th>' +
+      '<th>School</th><th>Offered</th><th>Worth knowing</th></tr></thead><tbody>' +
+      ps.map(function(p, i){
+        var cont = p.kind === 'continuing';
+        return '<tr class="' + (p.viable ? '' : 'blocked') + '">' +
+          '<td>' + (cont ? '<span class="pill p-ok">paired</span>'
+            : '<input type="checkbox" class="pick" data-i="' + i + '"' +
+              (p.viable ? ' checked' : '') + '>') + '</td>' +
+          '<td><b>' + esc(p.mentee) + '</b><div class="muted">' + esc(p.instrument) + '</div></td>' +
+          '<td>' + esc(p.mentor) + '</td>' +
+          '<td><b>' + p.score + '</b></td>' +
+          '<td>' + esc(p.site) + '</td>' +
+          '<td>' + (p.offered ? p.offered : '<span class="pill p-warn">none</span>') + '</td>' +
+          '<td class="muted">' + (p.flags.length ? p.flags.map(esc).join('<br>') : '—') + '</td>' +
+          '</tr>';
+      }).join('') +
+      '</tbody></table></div>' +
+      '<div class="bar"><button id="go"' + (fresh.length ? '' : ' disabled') + '>' +
+      'Approve selected</button><span class="muted" id="msg">' +
+      'Nothing is saved or emailed until you press this.</span></div></div>';
+  }
+
+  if(d.unmatched && d.unmatched.length){
+    h += '<div class="card"><b>Students nobody can take</b><ul class="muted" ' +
+      'style="margin:6px 0 0;padding-left:20px">' +
+      d.unmatched.map(function(u){
+        return '<li><b>' + esc(u.name) + '</b> (' + esc(u.what) + ') — ' + esc(u.why) + '</li>';
+      }).join('') + '</ul></div>';
+  }
+  return h;
+}
+
+/* ---- who has filled in their form ---- */
+function intakeHtml(rows){
+  var pill = { 'done':'p-ok', 'picking times':'p-n', 'chose schools':'p-warn',
+               'gave address':'p-warn', 'not started':'p-bad' };
+  return '<h2>Ambassadors <span class="muted">' + rows.length + '</span></h2>' +
+    '<div class="tw"><table><thead><tr><th>Name</th><th>Plays</th><th>Stage</th>' +
+    '<th>Times offered</th><th>Schools</th><th>Last chased</th></tr></thead><tbody>' +
+    rows.map(function(m){
+      return '<tr><td><b>' + esc(m.name) + '</b>' +
+        (m.paired ? ' <span class="pill p-ok">paired</span>' : '') + '</td>' +
+        '<td>' + esc(m.plays) + '</td>' +
+        '<td><span class="pill ' + pill[m.stage] + '">' + esc(m.stage) + '</span></td>' +
+        '<td>' + (m.offered || '<span class="muted">—</span>') + '</td>' +
+        '<td class="muted">' + (m.schools.length ? m.schools.map(esc).join(', ')
+          : '<span class="muted">—</span>') + '</td>' +
+        '<td class="muted">' + esc(m.nudged || '—') + '</td></tr>';
+    }).join('') + '</tbody></table></div>';
+}
+
+/* ---- sessions ---- */
+function upcomingHtml(d){
+  var h = '';
+  if(d.upcoming && d.upcoming.length){
+    h += '<h2>Next sessions</h2><div class="tw"><table><thead><tr><th>When</th>' +
+      '<th>Student</th><th>Ambassador</th><th>School</th><th></th></tr></thead><tbody>' +
+      d.upcoming.map(function(u){
+        return '<tr><td><b>' + esc(u.when) + '</b></td><td>' + esc(u.mentee) + '</td>' +
+          '<td>' + esc(u.mentor) + '</td><td>' + esc(u.site) + '</td>' +
+          '<td>' + (u.away === 0 ? '<span class="pill p-bad">today</span>'
+            : u.away === 1 ? '<span class="pill p-warn">tomorrow</span>'
+            : '<span class="muted">in ' + u.away + ' days</span>') + '</td></tr>';
+      }).join('') + '</tbody></table></div>';
+  }
+  if(d.unbooked && d.unbooked.length){
+    h += '<h2>No time chosen yet <span class="muted">' + d.unbooked.length + '</span></h2>' +
+      '<div class="tw"><table><thead><tr><th>Month</th><th>Student</th><th>Ambassador</th>' +
+      '</tr></thead><tbody>' +
+      d.unbooked.map(function(u){
+        return '<tr' + (u.orphan ? ' class="blocked"' : '') + '><td>' + esc(u.month) + '</td>' +
+          '<td>' + esc(u.mentee) + '</td><td>' + esc(u.mentor) + '</td></tr>';
+      }).join('') + '</tbody></table></div>';
+  }
+  return h;
+}
+
+function concernsHtml(cs){
+  if(!cs || !cs.length) return '';
+  return '<h2>Flagged in feedback</h2>' + cs.map(function(c){
+    return '<div class="note n-warn"><b>' + esc(c.who) + '</b> ' +
+      '<span class="muted">' + esc(c.when) + '</span><div style="margin-top:4px">' +
+      esc(c.what) + '</div></div>';
+  }).join('');
+}
+
+/* ---- actions ---- */
+function refresh(){
+  var b = document.getElementById('rf');
+  if(b){ b.disabled = true; b.textContent = 'Refreshing…'; }
+  google.script.run
+    .withSuccessHandler(function(r){
+      if(r.ok){ DATA = r.data; DATA.token = TOKEN; render(); }
+    })
+    .withFailureHandler(function(e){
+      if(b){ b.disabled = false; b.textContent = 'Refresh'; }
+      alert('Could not refresh: ' + e.message);
+    })
+    .apiPanelRefresh(TOKEN);
+}
+
+document.addEventListener('click', function(e){
+  if(e.target && e.target.id === 'go') approve();
+});
+
+function approve(){
+  var picks = [].slice.call(document.querySelectorAll('.pick:checked'))
+    .map(function(c){ return DATA.proposals[+c.dataset.i]; });
+  var msg = document.getElementById('msg');
+  if(!picks.length){ msg.textContent = 'Nothing selected.'; return; }
+  document.getElementById('go').disabled = true;
+  msg.textContent = 'Saving…';
+  google.script.run
+    .withSuccessHandler(function(r){
+      msg.textContent = r.message;
+      if(r.ok && r.data){ DATA = r.data; DATA.token = TOKEN; setTimeout(render, 1200); }
+    })
+    .withFailureHandler(function(e){
+      msg.textContent = 'Error: ' + e.message;
+      document.getElementById('go').disabled = false;
+    })
+    .apiPanelApprove(TOKEN, picks);
+}
+
+render();
+</script>
+</body>
+</html>

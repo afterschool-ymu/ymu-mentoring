@@ -86,6 +86,7 @@ const CFG = {
   // sitting in a mentor's or a family's inbox. Change docs/config.js instead.
   publicMentorUrl:  'https://afterschool-ymu.github.io/ymu-mentoring/mentor/',
   publicStudentUrl: 'https://afterschool-ymu.github.io/ymu-mentoring/student/',
+  publicPanelUrl:   'https://afterschool-ymu.github.io/ymu-mentoring/panel/',
   feedbackFormUrl: ''            // only needed if you use your own form instead
 };
 
