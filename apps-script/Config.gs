@@ -27,7 +27,7 @@ const CFG = {
   // Availability is gathered two months at a time. A mentor is only ever
   // asked about the cycle in front of them.
   cycles: [
-    { id: 'C1', collectFrom: '2026-09-23', dueBy: '2026-10-16', covers: [1, 2] }, // Oct, Nov
+    { id: 'C1', collectFrom: '2026-09-23', dueBy: '2026-10-05', covers: [1, 2] }, // Oct, Nov
     { id: 'C2', collectFrom: '2026-11-02', dueBy: '2026-11-13', covers: [3, 4] }, // Dec, Jan
     { id: 'C3', collectFrom: '2027-01-04', dueBy: '2027-01-15', covers: [5, 6] }, // Feb, Mar
     { id: 'C4', collectFrom: '2027-03-01', dueBy: '2027-03-12', covers: [7]    }  // Apr
@@ -44,7 +44,14 @@ const CFG = {
   minAlternativesToReschedule: 2,
 
   // ---- Reminder cadence ----------------------------------------------
-  remindDaysBefore: 7,           // "one week before"
+  // How many days before a session each reminder goes out. Each rung has its
+  // own template and its own column on Sessions, so nobody gets the same one
+  // twice. Order does not matter; the code sorts them.
+  remindDaysBefore: [14, 7, 3, 1],
+
+  // Which weekdays chase a mentor who has not filled in their form.
+  // 0 = Sunday, so [1,3,5] is Monday, Wednesday, Friday.
+  intakeChaseDays: [1, 3, 5],
   nudgeWithinDays: 21,           // start chasing unbooked sessions this close to month end
   renudgeEveryDays: 7,           // then chase again this often
   chaseCloseoutAfterDays: 1,     // days after a session before asking how it went
@@ -60,7 +67,8 @@ const CFG = {
   // and still reports what it WOULD have sent, so you can watch the system
   // work against real data without anyone receiving anything.
   automationPaused: false,
-  dailyHour: 6,                  // 24h, in CFG.tz. 6 means the 6am run.
+  dailyHour: 9,                  // 24h, in CFG.tz. Google runs it within the
+                                 // hour, so 9 lands around 9:00-10:00.
 
   // ---- Plumbing -------------------------------------------------------
   calendarName: 'YMU Mentoring', // a dedicated calendar, created on setup
@@ -107,7 +115,10 @@ const HEADERS = {
   Sessions:['session_id','pair_id','session_no','month','date','time','status',
             'reschedules','event_id','invite_sent','remind_week','remind_day',
             'remind_dayof','last_nudge','closeout_asked','feedback_sent','happened',
-            'minutes','worked_on','follow_up','picked_by','notes'],
+            'minutes','worked_on','follow_up','picked_by','notes',
+            // Appended last: setCell_ maps fields to columns by position, so
+            // inserting anywhere else would shift live data.
+            'remind_14','remind_3'],
   Log:     ['when','what','detail']
 };
 

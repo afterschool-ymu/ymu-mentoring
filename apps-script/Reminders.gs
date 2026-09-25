@@ -15,6 +15,34 @@
  * them an email ourselves.
  */
 
+/**
+ * The reminder rungs, derived from CFG.remindDaysBefore so the two cannot
+ * drift apart.
+ *
+ * Each rung owns a column on Sessions and a wording branch in sendReminder_.
+ * "floor" is how close a session may be and still count for that rung: one
+ * booked four days out should get the three-day reminder, not the fortnight
+ * one it already sailed past. Nearest-first, so the closest rung wins.
+ */
+const REMINDER_STEPS = (function () {
+  const KIND = { 14: 'twoweek', 7: 'week', 3: 'threeday', 1: 'day' };
+  // The original two keep their original columns so existing rows still read.
+  const FIELD = { 7: 'remind_week', 1: 'remind_day' };
+  const days = (CFG.remindDaysBefore || [7]).slice()
+    .sort(function (a, b) { return b - a; });
+  const rungs = days.map(function (d, i) {
+    const nearer = days[i + 1];
+    return {
+      days: d,
+      floor: nearer === undefined ? d : nearer + 1,
+      kind: KIND[d] || 'week',
+      field: FIELD[d] || ('remind_' + d)
+    };
+  });
+  rungs.push({ days: 0, floor: 0, kind: 'dayof', field: 'remind_dayof' });
+  return rungs.sort(function (a, b) { return a.days - b.days; });
+})();
+
 function dailyTick() {
   const today = todayIso_();
   // Paused means: do all the work, send nothing to mentors or families. The
@@ -33,26 +61,18 @@ function dailyTick() {
     if (s.date && ['scheduled', 'rescheduled'].indexOf(s.status) >= 0) {
       const away = daysBetween_(today, s.date);
 
-      // One week out. The range catches bookings made late, so a session
-      // booked three days ahead still gets one reminder rather than none.
-      if (away <= CFG.remindDaysBefore && away >= 2 && !s.remind_week) {
-        sendReminder_(s, pair, 'week', away);
-        setCell_('Sessions', s._row, 'remind_week', today);
-        summary.week++;
-      }
-      // Day before.
-      if (away === 1 && !s.remind_day) {
-        sendReminder_(s, pair, 'day', away);
-        setCell_('Sessions', s._row, 'remind_day', today);
-        summary.day++;
-      }
-      // Morning of — this is the coverage check, the one that matters when a
-      // school is closed or short-staffed.
-      if (away === 0 && !s.remind_dayof) {
-        sendReminder_(s, pair, 'dayof', away);
-        setCell_('Sessions', s._row, 'remind_dayof', today);
-        summary.dayof++;
-      }
+      // One rung per entry in CFG.remindDaysBefore, each owning its own column
+      // so nothing goes out twice. Nearest rung first, so a session booked late
+      // still gets the closest reminder rather than none at all.
+      REMINDER_STEPS.some(function (step) {
+        if (s[step.field]) return false;            // that rung already sent
+        if (away > step.days) return false;         // not due yet
+        if (away < step.floor) return false;        // that rung has gone by
+        sendReminder_(s, pair, step.kind, away);
+        setCell_('Sessions', s._row, step.field, today);
+        summary[step.kind] = (summary[step.kind] || 0) + 1;
+        return true;                                // at most one per run
+      });
       // Session has passed with nothing logged — ask the mentor how it went.
       if (away <= -CFG.chaseCloseoutAfterDays && !s.happened && !s.closeout_asked) {
         askForCloseout_(s, pair);
@@ -299,7 +319,18 @@ function sendReminder_(s, pair, kind, away) {
   const when = prettyDate_(s.date) + ' at ' + s.time;
   let subject, body;
 
-  if (kind === 'week') {
+  if (kind === 'twoweek') {
+    subject = 'In two weeks: ' + mentee.name + ' + ' + mentor.name + ' music session';
+    body = '<p>A first heads-up that the ' + s.month + ' mentoring session is booked.</p>' +
+      detailBlock_(mentee, mentor, pair, site, when) +
+      '<p>Nothing to do now — this is just so it is in the diary. If the date already ' +
+      'looks wrong, now is by far the easiest time to move it.</p>';
+  } else if (kind === 'threeday') {
+    subject = 'In three days: ' + mentee.name + ' + ' + mentor.name + ' at ' + s.time;
+    body = '<p>This session is in <b>three days</b>.</p>' +
+      detailBlock_(mentee, mentor, pair, site, when) +
+      '<p>If anything has changed, telling us now is much easier than on the day.</p>';
+  } else if (kind === 'week') {
     subject = 'In ' + away + ' days: ' + mentee.name + ' + ' + mentor.name + ' music session';
     body = '<p>A reminder that the ' + s.month + ' mentoring session is coming up.</p>' +
       detailBlock_(mentee, mentor, pair, site, when) +
@@ -452,6 +483,10 @@ function sendManagerDigest_(summary) {
 /** Chases a mentor who has not finished the availability form. */
 function chaseIntake_(mentor, status, daysLeft) {
   if (automationIsPaused_()) return false;   // safety switch
+  // Only on the weekdays the coordinator chose. Chasing a teenager every single
+  // day is how they learn to ignore you.
+  const dow = new Date().getDay();
+  if ((CFG.intakeChaseDays || [1, 3, 5]).indexOf(dow) < 0) return false;
   const to = [mentor.email, mentor.guardian1_email, mentor.guardian2_email]
     .filter(function (e) { return e && /@/.test(e); });
   if (!to.length) return;
