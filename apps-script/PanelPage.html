@@ -5,242 +5,534 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <base target="_top">
 <style>
-  :root{--bg:#f6f7f9;--panel:#fff;--ink:#16181d;--muted:#6b7280;--line:#e3e6ea;
-    --accent:#3b4cca;--accent-soft:#eef0ff;--ok:#1a7f4b;--ok-soft:#e8f6ee;
-    --warn:#9a6200;--warn-soft:#fdf3e0;--bad:#b3261e;--bad-soft:#fdecea}
-  @media (prefers-color-scheme:dark){:root{--bg:#14161a;--panel:#1c1f25;--ink:#e9ebef;
-    --muted:#9aa2ad;--line:#2c313a;--accent:#8b96ff;--accent-soft:#232842;
-    --ok:#66d19e;--ok-soft:#17301f;--warn:#e0b060;--warn-soft:#302614;
-    --bad:#f2857c;--bad-soft:#331c1a}}
+  :root{
+    --bg:#f5f6f8; --panel:#fff; --ink:#15171c; --muted:#6b7280; --faint:#9aa1ac;
+    --line:#e4e7eb; --line-soft:#f0f2f4;
+    --accent:#3b4cca; --accent-soft:#eef0ff;
+    --ok:#15803d; --ok-soft:#e9f7ee;
+    --warn:#a16207; --warn-soft:#fdf5e3;
+    --bad:#b3261e; --bad-soft:#fdecea;
+    --mentee:#9a3412; --mentee-soft:#fdf1e7;
+    --r:12px;
+  }
+  @media (prefers-color-scheme:dark){:root{
+    --bg:#101215; --panel:#1a1d22; --ink:#e9ebef; --muted:#9aa2ad; --faint:#6d757f;
+    --line:#2a2f37; --line-soft:#22262c;
+    --accent:#8b96ff; --accent-soft:#222844;
+    --ok:#5fcf93; --ok-soft:#142c1e;
+    --warn:#dfb268; --warn-soft:#2d2514;
+    --bad:#f2857c; --bad-soft:#331c1a;
+    --mentee:#fb923c; --mentee-soft:#33231a;
+  }}
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);overflow-wrap:break-word;
-    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
-  .wrap{max-width:1080px;margin:0 auto;padding:20px 16px 70px}
-  h1{font-size:21px;margin:0 0 2px;letter-spacing:-.02em}
-  .sub{color:var(--muted);font-size:13px}
-  h2{font-size:15px;margin:26px 0 9px;letter-spacing:-.01em}
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;
-    padding:15px;margin-bottom:12px}
-  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:9px;margin:14px 0 4px}
-  .tile{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:12px 13px}
-  .tile b{display:block;font-size:24px;font-weight:650;letter-spacing:-.02em;line-height:1.15}
-  .tile span{color:var(--muted);font-size:12px}
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased}
+
+  /* ---------- chrome ---------- */
+  header{background:var(--panel);border-bottom:1px solid var(--line);
+    position:sticky;top:0;z-index:20}
+  .hd{max-width:1180px;margin:0 auto;padding:13px 18px 0;
+    display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+  .hd h1{font-size:16px;margin:0;font-weight:650;letter-spacing:-.02em}
+  .hd .sub{color:var(--muted);font-size:12.5px}
+  .hd .spacer{flex:1}
+  nav{max-width:1180px;margin:0 auto;padding:8px 18px 0;display:flex;gap:2px;
+    overflow-x:auto;scrollbar-width:none}
+  nav::-webkit-scrollbar{display:none}
+  nav button{background:none;border:0;border-bottom:2px solid transparent;color:var(--muted);
+    font:inherit;font-size:13.5px;font-weight:600;padding:9px 13px;cursor:pointer;
+    white-space:nowrap;border-radius:0}
+  nav button:hover{color:var(--ink)}
+  nav button.on{color:var(--accent);border-bottom-color:var(--accent)}
+  nav button .n{font-size:11px;color:var(--faint);margin-left:5px;font-weight:600}
+
+  main{max-width:1180px;margin:0 auto;padding:20px 18px 80px}
+  h2{font-size:15px;margin:24px 0 9px;letter-spacing:-.01em}
+  h2:first-child{margin-top:0}
+  .lede{color:var(--muted);font-size:13px;margin:-4px 0 12px;max-width:72ch}
+
+  /* ---------- pieces ---------- */
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+    padding:16px;margin-bottom:12px}
+  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(124px,1fr));gap:10px;
+    margin-bottom:18px}
+  .tile{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+    padding:13px 14px}
+  .tile b{display:block;font-size:26px;font-weight:650;letter-spacing:-.025em;line-height:1.1}
+  .tile span{color:var(--muted);font-size:12px;display:block;margin-top:2px}
   .tile.good b{color:var(--ok)} .tile.bad b{color:var(--bad)} .tile.warn b{color:var(--warn)}
-  table{border-collapse:collapse;width:100%;font-size:13px}
-  th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;
-    color:var(--muted);border-bottom:1px solid var(--line);padding:7px 9px;font-weight:700}
-  td{padding:8px 9px;border-bottom:1px solid var(--line);vertical-align:top}
+
+  .tw{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+    overflow-x:auto;margin-bottom:12px}
+  table{border-collapse:collapse;width:100%;min-width:600px;font-size:13px}
+  td.nm{white-space:nowrap}
+  th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.055em;
+    color:var(--faint);border-bottom:1px solid var(--line);padding:9px 12px;font-weight:700;
+    white-space:nowrap;background:var(--panel);position:sticky;top:0}
+  td{padding:9px 12px;border-bottom:1px solid var(--line-soft);vertical-align:top}
   tr:last-child td{border-bottom:0}
-  .tw{overflow-x:auto;background:var(--panel);border:1px solid var(--line);border-radius:12px}
-  .pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11.5px;font-weight:650;
-    white-space:nowrap}
+  td b{font-weight:600}
+  .num{text-align:right;font-variant-numeric:tabular-nums}
+
+  .pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11.5px;
+    font-weight:650;white-space:nowrap}
   .p-ok{background:var(--ok-soft);color:var(--ok)}
   .p-warn{background:var(--warn-soft);color:var(--warn)}
   .p-bad{background:var(--bad-soft);color:var(--bad)}
   .p-n{background:var(--accent-soft);color:var(--accent)}
-  .note{border-radius:10px;padding:12px 14px;font-size:13.5px;margin:0 0 12px}
+  .p-s{background:var(--mentee-soft);color:var(--mentee)}
+  .p-off{background:var(--line-soft);color:var(--faint)}
+
+  .note{border-radius:10px;padding:12px 14px;font-size:13.5px;margin:0 0 10px}
   .n-bad{background:var(--bad-soft);color:var(--bad)}
   .n-warn{background:var(--warn-soft);color:var(--warn)}
   .n-ok{background:var(--ok-soft);color:var(--ok)}
   .n-info{background:var(--accent-soft);color:var(--accent)}
+  .note .why{font-size:12.5px;margin-top:3px;opacity:.85}
+  .note a{color:inherit;font-weight:650}
+
   .muted{color:var(--muted);font-size:12.5px}
-  button{background:var(--accent);color:#fff;border:0;border-radius:8px;padding:10px 17px;
-    font:inherit;font-size:14px;font-weight:600;cursor:pointer}
-  button.ghost{background:transparent;color:var(--accent);border:1px solid var(--line)}
+  .faint{color:var(--faint);font-size:12px}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px}
+
+  button.act{background:var(--accent);color:#fff;border:0;border-radius:9px;
+    padding:10px 17px;font:inherit;font-size:14px;font-weight:600;cursor:pointer}
+  button.ghost{background:transparent;color:var(--accent);border:1px solid var(--line);
+    border-radius:9px;padding:8px 14px;font:inherit;font-size:13px;font-weight:600;cursor:pointer}
   button:disabled{opacity:.5;cursor:default}
-  .bar{position:sticky;bottom:0;background:var(--panel);border-top:1px solid var(--line);
-    padding:12px 15px;margin:0 -15px -15px;border-radius:0 0 12px 12px;
-    display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .bar{background:var(--panel);border-top:1px solid var(--line);
+    padding:12px 16px;margin:0 -16px -16px;border-radius:0 0 var(--r) var(--r);
+    display:flex;gap:11px;align-items:center;flex-wrap:wrap}
   .blocked{background:var(--warn-soft)}
-  .top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
-  @media (pointer:coarse){button{min-height:44px}}
-  @media (max-width:560px){ th:nth-child(n+5), td:nth-child(n+5){display:none} }
+  .bars{display:flex;gap:3px;align-items:flex-end;height:22px}
+  .bars i{width:16px;background:var(--accent-soft);border-radius:2px 2px 0 0;display:block;
+    position:relative}
+  .bars i.ok{background:var(--ok)} .bars i.lo{background:var(--warn)}
+  .two{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:12px}
+  a.lnk{color:var(--accent);text-decoration:none;font-weight:600;font-size:12.5px}
+  details summary{cursor:pointer;font-weight:600;font-size:13px;padding:2px 0}
+  @media (pointer:coarse){button.act,button.ghost{min-height:44px}
+    nav button{min-height:44px}}
+  @media (max-width:620px){ .hide-s{display:none} main{padding:16px 12px 70px}
+    .hd,nav{padding-left:12px;padding-right:12px} }
 </style>
 </head>
 <body>
-<div class="wrap" id="app">Loading…</div>
+<header>
+  <div class="hd">
+    <h1>YMU Mentoring</h1>
+    <div class="sub" id="hsub"></div>
+    <div class="spacer"></div>
+    <button class="ghost" id="rf" onclick="refresh()">Refresh</button>
+  </div>
+  <nav id="nav"></nav>
+</header>
+<main id="view">Loading…</main>
 
 <script>
 var DATA = <?!= JSON.stringify(data).replace(/</g, '\\u003c') ?>;
 var TOKEN = (DATA && DATA.token) ? DATA.token : '';
+var TAB = 'dash';
 
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){
   return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 
-function render(){
-  var d = DATA, app = document.getElementById('app');
+var TABS = [
+  ['dash','Dashboard'], ['matching','Matching'], ['mentors','Ambassadors'],
+  ['students','Students'], ['sessions','Sessions'], ['schools','Schools'],
+  ['messages','Messages'], ['feedback','Feedback'], ['rules','Rules'], ['activity','Activity']
+];
 
+function count(k){
+  var d = DATA;
+  return { matching: (d.proposals||[]).filter(function(p){ return p.kind==='new'; }).length,
+           mentors: (d.mentors||[]).length, students: (d.mentees||[]).length,
+           sessions: (d.sessions||[]).length, schools: (d.sites||[]).length,
+           messages: (d.templates||[]).length, feedback: (d.feedback||[]).length
+         }[k];
+}
+
+function render(){
+  var d = DATA;
   if(d.error === 'denied' || !d.ok){
-    app.innerHTML = '<div class="card"><h2 style="margin-top:0">Not authorised</h2>' +
-      '<p>This panel needs the coordinator link. Open it from the spreadsheet: ' +
-      'menu &rarr; <b>Coordination panel</b>.</p></div>';
+    document.getElementById('nav').innerHTML = '';
+    document.getElementById('view').innerHTML =
+      '<div class="card"><h2 style="margin-top:0">Not authorised</h2>' +
+      '<p class="muted">This panel needs the coordinator link. Open it from the ' +
+      'spreadsheet: menu &rarr; <b>Coordination panel</b>.</p></div>';
     return;
   }
 
-  var h = '<div class="top"><div>' +
-    '<h1>YMU Mentoring</h1>' +
-    '<div class="sub">' + esc(d.today) + ' &middot; cycle ' + esc(d.cycle.id) +
-    ' collecting ' + esc(d.cycle.months) + '</div></div>' +
-    '<button class="ghost" onclick="refresh()" id="rf">Refresh</button></div>';
+  document.getElementById('hsub').innerHTML =
+    esc(d.today) + ' &middot; cycle ' + esc(d.cycle.id) + ' &middot; ' + esc(d.cycle.months) +
+    (d.paused ? ' &middot; <span class="pill p-warn">automation paused</span>' : '');
 
-  h += d.cycle.daysLeft < 0
-    ? '<div class="note n-bad" style="margin-top:14px"><b>The deadline has passed.</b> ' +
-      'It was ' + esc(d.cycle.due) + ', ' + Math.abs(d.cycle.daysLeft) + ' days ago.</div>'
-    : '<div class="note n-warn" style="margin-top:14px">Availability is due <b>' +
-      esc(d.cycle.due) + '</b> — ' + d.cycle.daysLeft + ' day' +
-      (d.cycle.daysLeft === 1 ? '' : 's') + ' left.</div>';
+  document.getElementById('nav').innerHTML = TABS.map(function(t){
+    var n = count(t[0]);
+    return '<button class="' + (TAB===t[0]?'on':'') + '" onclick="go(\'' + t[0] + '\')">' +
+      esc(t[1]) + (n ? '<span class="n">' + n + '</span>' : '') + '</button>';
+  }).join('');
 
-  if(d.paused){
-    h += '<div class="note n-info"><b>Automation is paused.</b> The daily job still runs ' +
-      'and still reports what it would have sent, but nothing reaches mentors or families.</div>';
-  }
-
-  var s = d.stats;
-  h += '<div class="tiles">' +
-    tile(s.done, 'forms finished', s.done ? 'good' : 'bad') +
-    tile(s.started, 'part way', 'warn') +
-    tile(s.mentors - s.done - s.started, 'not started', 'bad') +
-    tile(s.mentees, 'students') +
-    tile(s.pairs, 'pairs') +
-    tile(s.booked, 'sessions booked', 'good') +
-    tile(s.unbooked, 'need a time', s.unbooked ? 'warn' : '') +
-    '</div>';
-
-  h += gapsHtml(d.gaps);
-  h += proposalsHtml(d);
-  h += intakeHtml(d.intake);
-  h += upcomingHtml(d);
-  h += concernsHtml(d.concerns);
-
-  app.innerHTML = h;
+  document.getElementById('view').innerHTML = ({
+    dash: viewDash, matching: viewMatching, mentors: viewMentors, students: viewStudents,
+    sessions: viewSessions, schools: viewSchools, messages: viewMessages,
+    feedback: viewFeedback, rules: viewRules, activity: viewActivity
+  }[TAB] || viewDash)();
+  window.scrollTo(0, 0);
 }
+
+function go(t){ TAB = t; render(); }
 
 function tile(n, label, cls){
   return '<div class="tile ' + (cls||'') + '"><b>' + n + '</b><span>' + esc(label) + '</span></div>';
 }
+function table(heads, rows, cls){
+  if(!rows.length) return '';
+  return '<div class="tw"><table><thead><tr>' +
+    heads.map(function(h){ return '<th' + (h.s?' class="hide-s"':'') + '>' + esc(h.t||h) + '</th>'; }).join('') +
+    '</tr></thead><tbody>' + rows.join('') + '</tbody></table></div>';
+}
+function empty(msg){ return '<div class="card"><p class="muted" style="margin:0">' + esc(msg) + '</p></div>'; }
 
-/* ---- the things that quietly break a month ---- */
-function gapsHtml(gaps){
-  if(!gaps.length){
-    return '<h2>Nothing needs fixing</h2><div class="note n-ok">No missing contacts, ' +
-      'no schools without hours, no orphaned sessions.</div>';
+/* ================= Dashboard ================= */
+function viewDash(){
+  var d = DATA, s = d.stats, h = '';
+
+  h += d.cycle.daysLeft < 0
+    ? '<div class="note n-bad"><b>The deadline has passed.</b> It was ' + esc(d.cycle.due) +
+      ', ' + Math.abs(d.cycle.daysLeft) + ' days ago.</div>'
+    : '<div class="note ' + (d.cycle.daysLeft <= 5 ? 'n-warn' : 'n-info') + '">' +
+      'Availability is due <b>' + esc(d.cycle.due) + '</b> — ' + d.cycle.daysLeft +
+      ' day' + (d.cycle.daysLeft===1?'':'s') + ' left. Ambassadors are chased on ' +
+      esc(d.rules.chaseDays) + '.</div>';
+
+  if(d.paused){
+    h += '<div class="note n-warn"><b>Automation is paused.</b> The daily job still runs ' +
+      'and still reports what it would have sent, but nothing reaches mentors or families.</div>';
   }
-  return '<h2>Needs fixing <span class="muted">' + gaps.length + '</span></h2>' +
-    gaps.map(function(g){
-      return '<div class="note ' + (g.level === 'bad' ? 'n-bad' : 'n-warn') + '">' +
-        '<b>' + esc(g.what) + '</b><div style="font-size:12.5px;margin-top:3px;opacity:.85">' +
-        esc(g.why) + '</div></div>';
-    }).join('');
+
+  h += '<div class="tiles">' +
+    tile(s.done + '/' + s.mentors, 'forms finished', s.done ? 'good' : 'bad') +
+    tile(s.started, 'part way', s.started ? 'warn' : '') +
+    tile(s.offered, 'times offered') +
+    tile(s.mentees, 'students') +
+    tile(s.pairs, 'pairs') +
+    tile(s.booked, 'sessions booked', s.booked ? 'good' : '') +
+    tile(s.unbooked, 'need a time', s.unbooked ? 'warn' : '') +
+    '</div>';
+
+  // Needs fixing
+  if(d.gaps.length){
+    h += '<h2>Needs fixing <span class="faint">' + d.gaps.length + '</span></h2>' +
+      d.gaps.map(function(g){
+        return '<div class="note ' + (g.level==='bad'?'n-bad':'n-warn') + '">' +
+          '<b>' + esc(g.what) + '</b><div class="why">' + esc(g.why) +
+          (g.tab ? ' <a href="#" onclick="go(\'' + g.tab + '\');return false">Open ' +
+            esc(g.tab) + ' &rarr;</a>' : '') + '</div></div>';
+      }).join('');
+  } else {
+    h += '<h2>Nothing needs fixing</h2><div class="note n-ok">No missing contacts, no ' +
+      'schools without hours, no orphaned sessions.</div>';
+  }
+
+  // Progress by stage
+  var stages = ['done','picking times','chose schools','gave address','not started'];
+  var byStage = stages.map(function(st){
+    return { st: st, n: d.mentors.filter(function(m){ return m.stage===st; }).length };
+  }).filter(function(x){ return x.n; });
+  if(byStage.length){
+    h += '<h2>Where the ambassadors are</h2><div class="card">' +
+      byStage.map(function(x){
+        var pct = Math.round(x.n / d.stats.mentors * 100);
+        return '<div style="display:flex;align-items:center;gap:11px;padding:5px 0">' +
+          '<span class="pill ' + stagePill(x.st) + '" style="min-width:112px;text-align:center">' +
+          esc(x.st) + '</span>' +
+          '<span style="flex:1;height:9px;background:var(--line-soft);border-radius:5px;overflow:hidden">' +
+          '<span style="display:block;height:100%;width:' + pct + '%;background:' +
+          stageColour(x.st) + '"></span></span>' +
+          '<b class="num" style="min-width:26px">' + x.n + '</b></div>';
+      }).join('') + '</div>';
+  }
+
+  // Next sessions
+  var next = d.sessions.filter(function(s){ return s.date && s.away >= 0 &&
+    (s.status==='scheduled'||s.status==='rescheduled'); }).slice(0, 6);
+  if(next.length){
+    h += '<h2>Next sessions</h2>' + table(
+      ['When','Student','Ambassador',{t:'School',s:1},''],
+      next.map(function(u){
+        return '<tr><td><b>' + esc(u.pretty) + '</b> ' + esc(u.time) + '</td>' +
+          '<td>' + esc(u.mentee) + '</td><td>' + esc(u.mentor) + '</td>' +
+          '<td class="hide-s muted">' + esc(u.site) + '</td><td>' + awayPill(u.away) + '</td></tr>';
+      }));
+  }
+  return h;
+}
+function stagePill(st){
+  return { 'done':'p-ok', 'picking times':'p-n', 'chose schools':'p-warn',
+           'gave address':'p-warn', 'not started':'p-bad' }[st] || 'p-off';
+}
+function stageColour(st){
+  return { 'done':'var(--ok)', 'picking times':'var(--accent)', 'chose schools':'var(--warn)',
+           'gave address':'var(--warn)', 'not started':'var(--bad)' }[st] || 'var(--faint)';
+}
+function awayPill(a){
+  if(a === 0) return '<span class="pill p-bad">today</span>';
+  if(a === 1) return '<span class="pill p-warn">tomorrow</span>';
+  return '<span class="faint">in ' + a + ' days</span>';
 }
 
-/* ---- pairing ---- */
-function proposalsHtml(d){
-  var ps = d.proposals || [];
-  var fresh = ps.filter(function(p){ return p.kind === 'new'; });
+/* ================= Matching ================= */
+function viewMatching(){
+  var d = DATA, ps = d.proposals || [];
+  var fresh = ps.filter(function(p){ return p.kind==='new'; });
+  var h = '<h2>Suggested pairings</h2>' +
+    '<p class="lede">Instrument must match exactly — that is the one rule that cannot bend. ' +
+    'After that: how close the school is to the ambassador (50), how many times they have ' +
+    'offered there (30), and how the skill levels sit (20). Nothing is saved or emailed ' +
+    'until you approve.</p>';
 
-  var h = '<h2>Pairing</h2>';
   if(!ps.length){
-    h += '<div class="card"><p style="margin:0">Nothing to pair yet. ' +
-      (d.stats.mentees ? 'No student and ambassador share an instrument.'
-                       : 'Add students to the Mentees tab first.') + '</p></div>';
+    h += empty(d.stats.mentees
+      ? 'No student and ambassador share an instrument yet.'
+      : 'No students on the roster yet. Add them to the Mentees tab.');
   } else {
-    h += '<div class="card" style="padding:0"><div class="tw" style="border:0">' +
-      '<table><thead><tr><th></th><th>Student</th><th>Ambassador</th><th>Score</th>' +
-      '<th>School</th><th>Offered</th><th>Worth knowing</th></tr></thead><tbody>' +
+    h += '<div class="card" style="padding:0">' + table(
+      ['', 'Student', 'Ambassador', 'Score', {t:'School',s:1}, 'Offered', {t:'Worth knowing',s:1}],
       ps.map(function(p, i){
         var cont = p.kind === 'continuing';
-        return '<tr class="' + (p.viable ? '' : 'blocked') + '">' +
+        return '<tr class="' + (p.viable?'':'blocked') + '">' +
           '<td>' + (cont ? '<span class="pill p-ok">paired</span>'
             : '<input type="checkbox" class="pick" data-i="' + i + '"' +
-              (p.viable ? ' checked' : '') + '>') + '</td>' +
-          '<td><b>' + esc(p.mentee) + '</b><div class="muted">' + esc(p.instrument) + '</div></td>' +
+              (p.viable?' checked':'') + '>') + '</td>' +
+          '<td><b>' + esc(p.mentee) + '</b><div class="faint">' + esc(p.instrument) + '</div></td>' +
           '<td>' + esc(p.mentor) + '</td>' +
-          '<td><b>' + p.score + '</b></td>' +
-          '<td>' + esc(p.site) + '</td>' +
-          '<td>' + (p.offered ? p.offered : '<span class="pill p-warn">none</span>') + '</td>' +
-          '<td class="muted">' + (p.flags.length ? p.flags.map(esc).join('<br>') : '—') + '</td>' +
+          '<td class="num"><b>' + p.score + '</b></td>' +
+          '<td class="hide-s muted">' + esc(p.site) + '</td>' +
+          '<td class="num">' + (p.offered ? p.offered : '<span class="pill p-warn">none</span>') + '</td>' +
+          '<td class="hide-s faint">' + (p.flags.length ? p.flags.map(esc).join('<br>') : '—') + '</td>' +
           '</tr>';
-      }).join('') +
-      '</tbody></table></div>' +
-      '<div class="bar"><button id="go"' + (fresh.length ? '' : ' disabled') + '>' +
-      'Approve selected</button><span class="muted" id="msg">' +
-      'Nothing is saved or emailed until you press this.</span></div></div>';
+      })).replace('<div class="tw">','<div class="tw" style="border:0;margin:0">') +
+      '<div class="bar"><button class="act" id="go"' + (fresh.length?'':' disabled') + '>' +
+      'Approve selected</button><span class="muted" id="msg">Amber rows have no times ' +
+      'offered yet, so they cannot be scheduled even once approved.</span></div></div>';
   }
 
-  if(d.unmatched && d.unmatched.length){
-    h += '<div class="card"><b>Students nobody can take</b><ul class="muted" ' +
-      'style="margin:6px 0 0;padding-left:20px">' +
+  if((d.unmatched||[]).length){
+    h += '<h2>Students nobody can take</h2>' + table(['Student','Plays','Why'],
       d.unmatched.map(function(u){
-        return '<li><b>' + esc(u.name) + '</b> (' + esc(u.what) + ') — ' + esc(u.why) + '</li>';
-      }).join('') + '</ul></div>';
+        return '<tr><td><b>' + esc(u.name) + '</b></td><td>' + esc(u.what) + '</td>' +
+          '<td class="muted">' + esc(u.why) + '</td></tr>'; }));
+  }
+  if((d.idle||[]).length){
+    h += '<h2>Ambassadors with nobody left</h2>' + table(['Ambassador','Plays','Why'],
+      d.idle.map(function(u){
+        return '<tr><td><b>' + esc(u.name) + '</b></td><td>' + esc(u.what) + '</td>' +
+          '<td class="muted">' + esc(u.why) + '</td></tr>'; }));
   }
   return h;
 }
 
-/* ---- who has filled in their form ---- */
-function intakeHtml(rows){
-  var pill = { 'done':'p-ok', 'picking times':'p-n', 'chose schools':'p-warn',
-               'gave address':'p-warn', 'not started':'p-bad' };
-  return '<h2>Ambassadors <span class="muted">' + rows.length + '</span></h2>' +
-    '<div class="tw"><table><thead><tr><th>Name</th><th>Plays</th><th>Stage</th>' +
-    '<th>Times offered</th><th>Schools</th><th>Last chased</th></tr></thead><tbody>' +
-    rows.map(function(m){
-      return '<tr><td><b>' + esc(m.name) + '</b>' +
-        (m.paired ? ' <span class="pill p-ok">paired</span>' : '') + '</td>' +
-        '<td>' + esc(m.plays) + '</td>' +
-        '<td><span class="pill ' + pill[m.stage] + '">' + esc(m.stage) + '</span></td>' +
-        '<td>' + (m.offered || '<span class="muted">—</span>') + '</td>' +
-        '<td class="muted">' + (m.schools.length ? m.schools.map(esc).join(', ')
-          : '<span class="muted">—</span>') + '</td>' +
-        '<td class="muted">' + esc(m.nudged || '—') + '</td></tr>';
-    }).join('') + '</tbody></table></div>';
+/* ================= Ambassadors ================= */
+function viewMentors(){
+  var d = DATA;
+  return '<h2>Student Ambassadors</h2>' +
+    '<p class="lede">Each needs at least ' + d.cycle.minPerMonth + ' times a month per school; ' +
+    'we ask for about ' + d.cycle.encourage + '. The bars are ' + esc(d.cycle.months) + '.</p>' +
+    table(['Name', 'Plays', 'Stage', {t:'Times per month',s:1}, {t:'Schools',s:1},
+           {t:'Contact',s:1}, {t:'Chased',s:1}, ''],
+      d.mentors.map(function(m){
+        return '<tr>' +
+          '<td class="nm"><b>' + esc(m.name) + '</b>' +
+            (m.pairedWith ? '<div class="faint">with ' + esc(m.pairedWith) + '</div>'
+                          : '<div class="faint">' + esc(m.grade) + '</div>') + '</td>' +
+          '<td>' + esc(m.plays) + '<div class="faint">' + esc(m.level) + '</div></td>' +
+          '<td><span class="pill ' + stagePill(m.stage) + '">' + esc(m.stage) + '</span></td>' +
+          '<td class="hide-s">' + monthBars(m.perMonth, d.cycle.minPerMonth) + '</td>' +
+          '<td class="hide-s muted">' + (m.schools.length ? m.schools.map(esc).join('<br>') : '—') + '</td>' +
+          '<td class="hide-s"><div class="faint">' + esc(m.email) + '</div>' +
+            '<div class="faint">' + esc(m.guardianEmail||'') + '</div></td>' +
+          '<td class="hide-s faint">' + esc(m.nudged||'—') + '</td>' +
+          '<td>' + (m.link ? '<a class="lnk" href="' + esc(m.link) + '" target="_blank" ' +
+            'rel="noopener">Open</a>' : '') + '</td></tr>';
+      }));
+}
+function monthBars(per, min){
+  if(!per || !per.length) return '<span class="faint">—</span>';
+  return '<div style="display:flex;gap:10px">' + per.map(function(p){
+    var h = p.n ? Math.min(22, 6 + p.n*2.5) : 3;
+    return '<span style="text-align:center"><span class="bars">' +
+      '<i class="' + (p.n >= min ? 'ok' : p.n ? 'lo' : '') + '" style="height:' + h + 'px"></i>' +
+      '</span><span class="faint" style="display:block">' + esc(p.label.slice(0,3)) +
+      ' ' + p.n + '</span></span>';
+  }).join('') + '</div>';
 }
 
-/* ---- sessions ---- */
-function upcomingHtml(d){
-  var h = '';
-  if(d.upcoming && d.upcoming.length){
-    h += '<h2>Next sessions</h2><div class="tw"><table><thead><tr><th>When</th>' +
-      '<th>Student</th><th>Ambassador</th><th>School</th><th></th></tr></thead><tbody>' +
-      d.upcoming.map(function(u){
-        return '<tr><td><b>' + esc(u.when) + '</b></td><td>' + esc(u.mentee) + '</td>' +
-          '<td>' + esc(u.mentor) + '</td><td>' + esc(u.site) + '</td>' +
-          '<td>' + (u.away === 0 ? '<span class="pill p-bad">today</span>'
-            : u.away === 1 ? '<span class="pill p-warn">tomorrow</span>'
-            : '<span class="muted">in ' + u.away + ' days</span>') + '</td></tr>';
-      }).join('') + '</tbody></table></div>';
+/* ================= Students ================= */
+function viewStudents(){
+  var d = DATA;
+  if(!d.mentees.length) return '<h2>Students</h2>' +
+    empty('Nobody on the Mentees tab yet. Add them there, then use "Create student booking links".');
+  return '<h2>Students</h2>' +
+    '<p class="lede">The booking link goes to the guardian. They choose each session\'s time ' +
+    'from what their ambassador has offered — no account, no password.</p>' +
+    table(['Name','Plays',{t:'School',s:1},'Ambassador','Booked',{t:'Guardian',s:1},''],
+      d.mentees.map(function(m){
+        return '<tr><td class="nm"><b>' + esc(m.name) + '</b>' +
+          (m.usual ? '<div class="faint">usually ' + esc(m.usual) + '</div>' : '') + '</td>' +
+          '<td>' + esc(m.plays) + '<div class="faint">' + esc(m.level) + '</div></td>' +
+          '<td class="hide-s muted">' + esc(m.site) + '</td>' +
+          '<td>' + (m.mentor ? esc(m.mentor) : '<span class="pill p-warn">unpaired</span>') + '</td>' +
+          '<td class="num">' + (m.total ? m.booked + '/' + m.total : '—') + '</td>' +
+          '<td class="hide-s faint">' + esc(m.guardianEmail || '(none)') + '</td>' +
+          '<td>' + (m.link ? '<a class="lnk" href="' + esc(m.link) + '" target="_blank" ' +
+            'rel="noopener">Open</a>' : '') + '</td></tr>';
+      }));
+}
+
+/* ================= Sessions ================= */
+function viewSessions(){
+  var d = DATA;
+  if(!d.sessions.length) return '<h2>Sessions</h2>' +
+    empty('No sessions yet. Approve a pairing, then run "Create missing sessions".');
+  var pill = { scheduled:'p-n', rescheduled:'p-n', completed:'p-ok',
+               missed:'p-bad', unscheduled:'p-warn' };
+  return '<h2>Sessions <span class="faint">' + d.sessions.length + '</span></h2>' +
+    '<p class="lede">Seven per pair, October to April, one a month.</p>' +
+    table(['#','Month','Student','Ambassador',{t:'School',s:1},'When','Status'],
+      d.sessions.map(function(s){
+        return '<tr' + (s.orphan ? ' class="blocked"' : '') + '>' +
+          '<td class="faint">' + s.no + '</td><td>' + esc(s.month) + '</td>' +
+          '<td>' + (s.orphan ? '<span class="faint">pair deleted</span>' : '<b>' + esc(s.mentee) + '</b>') + '</td>' +
+          '<td>' + esc(s.mentor) + '</td>' +
+          '<td class="hide-s muted">' + esc(s.site) + '</td>' +
+          '<td>' + (s.date ? esc(s.pretty) + ' ' + esc(s.time) : '<span class="faint">—</span>') +
+            (s.moved ? '<div class="faint">moved ' + s.moved + '&times;</div>' : '') + '</td>' +
+          '<td><span class="pill ' + (pill[s.status]||'p-off') + '">' + esc(s.status) + '</span></td>' +
+          '</tr>';
+      }));
+}
+
+/* ================= Schools ================= */
+function viewSchools(){
+  var d = DATA;
+  return '<h2>Schools <span class="faint">' + d.sites.length + '</span></h2>' +
+    '<p class="lede">A school with no programme hours never appears in an ambassador\'s form. ' +
+    'A school with no staff email means no adult there is told about any session.</p>' +
+    table(['School',{t:'Address',s:1},'Hours','Staff email','Mentors','Students'],
+      d.sites.map(function(s){
+        return '<tr' + ((!s.hours || !s.staffEmail) ? ' class="blocked"' : '') + '>' +
+          '<td class="nm"><b>' + esc(s.name) + '</b>' +
+            (s.located ? '' : '<div class="faint">not located</div>') + '</td>' +
+          '<td class="hide-s faint">' + esc(s.address) + '</td>' +
+          '<td>' + (s.hours ? '<span class="muted">' + esc(s.hours) + '</span>'
+            : '<span class="pill p-bad">none</span>') + '</td>' +
+          '<td>' + (s.staffEmail ? '<span class="faint">' + esc(s.staffEmail) + '</span>'
+            : '<span class="pill p-bad">missing</span>') + '</td>' +
+          '<td class="num">' + (s.mentors || '<span class="faint">0</span>') + '</td>' +
+          '<td class="num">' + (s.students || '<span class="faint">0</span>') + '</td></tr>';
+      }));
+}
+
+/* ================= Messages ================= */
+function viewMessages(){
+  var d = DATA;
+  if(!d.templates.length) return '<h2>Messages</h2>' + empty('No Templates tab yet.');
+  return '<h2>Automated messages <span class="faint">' + d.templates.length + '</span></h2>' +
+    '<p class="lede">Edit any wording on the Templates tab and the next send uses yours — no ' +
+    'code change. Set enabled to FALSE to switch one off. Session reminders go out ' +
+    esc(d.rules.remindDays) + ' days before, and on the morning.</p>' +
+    table(['Message','Goes to','When','How often','Status'],
+      d.templates.map(function(t){
+        return '<tr><td><b>' + esc(t.label) + '</b><div class="faint mono">' + esc(t.key) + '</div></td>' +
+          '<td class="muted">' + esc(t.audience) + '</td>' +
+          '<td class="muted">' + esc(t.when) + '</td>' +
+          '<td class="faint">' + esc(t.frequency) + '</td>' +
+          '<td>' + (t.on ? '<span class="pill p-ok">on</span>'
+                         : '<span class="pill p-off">off</span>') + '</td></tr>';
+      }));
+}
+
+/* ================= Feedback ================= */
+function viewFeedback(){
+  var d = DATA, a = d.feedbackAvg;
+  var h = '<h2>Feedback</h2>';
+  if(!a || !a.count) return h + empty('No responses yet. The form goes out ' +
+    'automatically five minutes before each session ends.');
+  h += '<div class="tiles">' + tile(a.count, 'responses') +
+    tile(a.rating != null ? a.rating : '—', 'avg. how it went', 'good') +
+    tile(a.progress != null ? a.progress : '—', 'avg. progress', 'good') + '</div>';
+  var flagged = d.feedback.filter(function(f){ return f.concerns; });
+  if(flagged.length){
+    h += '<h2>Flagged for follow-up</h2>' + flagged.map(function(f){
+      return '<div class="note n-warn"><b>' + esc(f.who||f.role) + '</b> ' +
+        '<span class="faint">' + esc(f.when) + '</span>' +
+        '<div class="why">' + esc(f.concerns) + '</div></div>'; }).join('');
   }
-  if(d.unbooked && d.unbooked.length){
-    h += '<h2>No time chosen yet <span class="muted">' + d.unbooked.length + '</span></h2>' +
-      '<div class="tw"><table><thead><tr><th>Month</th><th>Student</th><th>Ambassador</th>' +
-      '</tr></thead><tbody>' +
-      d.unbooked.map(function(u){
-        return '<tr' + (u.orphan ? ' class="blocked"' : '') + '><td>' + esc(u.month) + '</td>' +
-          '<td>' + esc(u.mentee) + '</td><td>' + esc(u.mentor) + '</td></tr>';
-      }).join('') + '</tbody></table></div>';
-  }
+  h += '<h2>Recent responses</h2>' + table(['When','Who','Went','Progress',{t:'Worked on',s:1}],
+    d.feedback.map(function(f){
+      return '<tr><td class="faint">' + esc(f.when) + '</td>' +
+        '<td>' + esc(f.who) + '<div class="faint">' + esc(f.role) + '</div></td>' +
+        '<td class="num">' + esc(f.rating) + '</td><td class="num">' + esc(f.progress) + '</td>' +
+        '<td class="hide-s muted">' + esc(f.workedOn) + '</td></tr>'; }));
   return h;
 }
 
-function concernsHtml(cs){
-  if(!cs || !cs.length) return '';
-  return '<h2>Flagged in feedback</h2>' + cs.map(function(c){
-    return '<div class="note n-warn"><b>' + esc(c.who) + '</b> ' +
-      '<span class="muted">' + esc(c.when) + '</span><div style="margin-top:4px">' +
-      esc(c.what) + '</div></div>';
-  }).join('');
+/* ================= Rules ================= */
+function viewRules(){
+  var r = DATA.rules, c = DATA.cycle;
+  return '<h2>How the programme is set up</h2>' +
+    '<p class="lede">All of this lives in Config in the script. Ask and it changes.</p>' +
+    '<div class="two">' +
+    '<div class="card"><h2 style="margin:0 0 8px">Sessions</h2>' +
+      kv('Length', r.sessionMinutes + ' minutes') +
+      kv('Per pair', '7, October to April') +
+      kv('Reschedules before escalating', r.maxReschedules) +
+      kv('Times needed per month', c.minPerMonth + ' minimum, ~' + c.encourage + ' asked for') +
+    '</div>' +
+    '<div class="card"><h2 style="margin:0 0 8px">Email</h2>' +
+      kv('Daily job', 'around ' + r.dailyHour + ':00') +
+      kv('Session reminders', r.remindDays + ' days before, plus the morning') +
+      kv('Unfilled forms chased', r.chaseDays) +
+    '</div></div>' +
+    '<h2>Availability cycles</h2>' +
+    '<p class="lede">Collected two months at a time, so nobody is asked in September what ' +
+    'they are doing in April.</p>' +
+    table(['Cycle','Opens','Due','Collects for'], r.cycles.map(function(x){
+      return '<tr' + (x.id===c.id ? ' class="blocked"' : '') + '><td><b>' + esc(x.id) + '</b>' +
+        (x.id===c.id ? ' <span class="pill p-n">now</span>' : '') + '</td>' +
+        '<td class="muted">' + esc(x.from) + '</td><td class="muted">' + esc(x.due) + '</td>' +
+        '<td>' + esc(x.months) + '</td></tr>'; }));
+}
+function kv(k, v){
+  return '<div style="display:flex;justify-content:space-between;gap:12px;padding:5px 0;' +
+    'border-bottom:1px solid var(--line-soft)"><span class="muted">' + esc(k) + '</span>' +
+    '<b style="text-align:right">' + esc(v) + '</b></div>';
 }
 
-/* ---- actions ---- */
+/* ================= Activity ================= */
+function viewActivity(){
+  var d = DATA;
+  if(!d.activity.length) return '<h2>Activity</h2>' + empty('Nothing logged yet.');
+  return '<h2>Activity <span class="faint">most recent first</span></h2>' +
+    table(['When','What',{t:'Detail',s:1}], d.activity.map(function(l){
+      return '<tr><td class="faint" style="white-space:nowrap">' + esc(l.when) + '</td>' +
+        '<td><b>' + esc(l.what) + '</b></td>' +
+        '<td class="hide-s muted">' + esc(l.detail) + '</td></tr>'; }));
+}
+
+/* ================= actions ================= */
 function refresh(){
   var b = document.getElementById('rf');
-  if(b){ b.disabled = true; b.textContent = 'Refreshing…'; }
+  b.disabled = true; b.textContent = 'Refreshing…';
   google.script.run
     .withSuccessHandler(function(r){
+      b.disabled = false; b.textContent = 'Refresh';
       if(r.ok){ DATA = r.data; DATA.token = TOKEN; render(); }
     })
     .withFailureHandler(function(e){
-      if(b){ b.disabled = false; b.textContent = 'Refresh'; }
+      b.disabled = false; b.textContent = 'Refresh';
       alert('Could not refresh: ' + e.message);
     })
     .apiPanelRefresh(TOKEN);
@@ -260,7 +552,7 @@ function approve(){
   google.script.run
     .withSuccessHandler(function(r){
       msg.textContent = r.message;
-      if(r.ok && r.data){ DATA = r.data; DATA.token = TOKEN; setTimeout(render, 1200); }
+      if(r.ok && r.data){ DATA = r.data; DATA.token = TOKEN; setTimeout(render, 1300); }
     })
     .withFailureHandler(function(e){
       msg.textContent = 'Error: ' + e.message;
