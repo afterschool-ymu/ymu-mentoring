@@ -145,6 +145,7 @@
   <div class="spacer"></div>
   <nav>
     <a href="#overview">Overview</a>
+    <a href="#hub">Home</a>
     <a href="#links">Links</a>
     <a href="#who">Who sees what</a>
     <a href="#setup">Setup</a>
@@ -178,6 +179,94 @@
   </div>
 </div>
 
+
+<!-- ============================================================ -->
+<div class="card" id="hub" style="border-left:3px solid var(--ok)">
+  <h4 style="margin-top:0">Everything, from here</h4>
+
+  <div class="three" style="margin-top:12px">
+
+    <div class="who mgr">
+      <div class="role">You</div>
+      <h4>Coordination panel</h4>
+      <p style="font-size:13.5px;color:var(--muted);margin:0">Ten tabs over the live data:
+      who has filled in their form, pairing, sessions, schools, messages, feedback.</p>
+      <div id="panelbox" style="margin-top:12px"></div>
+    </div>
+
+    <div class="who mtr">
+      <div class="role">Student Ambassador</div>
+      <h4>What a mentor sees</h4>
+      <p style="font-size:13.5px;color:var(--muted);margin:0">The real screen, with an
+      invented ambassador. Nothing is saved, so click anything.</p>
+      <a class="open" href="preview/mentor.html">Open the example &rarr;</a>
+    </div>
+
+    <div class="who stu">
+      <div class="role">Student &amp; guardian</div>
+      <h4>What a family sees</h4>
+      <p style="font-size:13.5px;color:var(--muted);margin:0">Real school hours and the real
+      holiday calendar, an invented student. Works on a phone.</p>
+      <a class="open" href="preview/student.html">Open the example &rarr;</a>
+    </div>
+
+  </div>
+
+  <p style="font-size:13px;color:var(--muted);margin:14px 0 0">The two previews are safe to
+  show anyone — no real names, and nothing they do is recorded.</p>
+</div>
+
+<script>
+/* The panel link carries the coordinator token, which is a credential, so it
+   cannot be published here. Instead it is remembered in this browser only:
+   localStorage never leaves the machine and is never sent anywhere. */
+(function () {
+  var KEY = 'ymuPanelLink', box = document.getElementById('panelbox');
+  if (!box) return;
+
+  function read() {
+    try { return localStorage.getItem(KEY) || ''; } catch (e) { return ''; }
+  }
+  function write(v) {
+    try { localStorage.setItem(KEY, v); } catch (e) { /* private window */ }
+  }
+
+  function draw() {
+    var saved = read();
+    if (saved) {
+      box.innerHTML =
+        '<a class="open" style="background:var(--accent);color:#fff;border-color:var(--accent)" ' +
+        'href="' + saved.replace(/"/g, '&quot;') + '">Open my panel &rarr;</a> ' +
+        '<button type="button" id="forget" style="background:none;border:0;color:var(--muted);' +
+        'font:inherit;font-size:12.5px;cursor:pointer;text-decoration:underline">forget</button>';
+      document.getElementById('forget').onclick = function () {
+        try { localStorage.removeItem(KEY); } catch (e) {}
+        draw();
+      };
+      return;
+    }
+    box.innerHTML =
+      '<p style="font-size:12.5px;color:var(--muted);margin:0 0 6px">Paste your panel link ' +
+      'once and this browser will remember it. Get it from the spreadsheet: ' +
+      'menu &rarr; <b>Coordination panel</b>.</p>' +
+      '<input id="plink" type="url" placeholder="https://\u2026/panel/?token=\u2026" ' +
+      'style="width:100%;font-size:16px;padding:9px 10px;border:1px solid var(--line);' +
+      'border-radius:8px;background:var(--bg);color:var(--ink)">' +
+      '<button type="button" id="save" class="open" style="margin-top:8px;cursor:pointer;' +
+      'background:var(--accent);color:#fff;border-color:var(--accent)">Remember it</button>' +
+      '<span id="perr" style="font-size:12.5px;color:var(--bad);margin-left:8px"></span>';
+    document.getElementById('save').onclick = function () {
+      var v = document.getElementById('plink').value.trim();
+      if (!/[?&]token=|[?&]panel=/.test(v)) {
+        document.getElementById('perr').textContent = 'That link has no token in it.';
+        return;
+      }
+      write(v); draw();
+    };
+  }
+  draw();
+})();
+</script>
 
 <div class="card" id="links" style="border-left:3px solid var(--accent)">
   <h4 style="margin-top:0">The two links you share</h4>
