@@ -432,7 +432,22 @@ function viewSchools(){
             : '<span class="pill p-bad">missing</span>') + '</td>' +
           '<td class="num">' + (s.mentors || '<span class="faint">0</span>') + '</td>' +
           '<td class="num">' + (s.students || '<span class="faint">0</span>') + '</td></tr>';
-      }));
+      })) + parkedHtml(d.parked);
+}
+
+/**
+ * Schools deliberately out of play. Not a fault, so not red — but listed,
+ * because "invisible to mentors" and "forgotten" look identical otherwise.
+ */
+function parkedHtml(parked){
+  if(!parked || !parked.length) return '';
+  return '<h2>Parked <span class="faint">' + parked.length + '</span></h2>' +
+    '<p class="lede">Out of play on purpose. Mentors never see these, and they do not ' +
+    'count as a problem. Add hours and set <code>active</code> to TRUE to bring one in.</p>' +
+    table(['School',{t:'Address',s:1},'Waiting on'], parked.map(function(s){
+      return '<tr><td class="nm"><b>' + esc(s.name) + '</b></td>' +
+        '<td class="hide-s faint">' + esc(s.address) + '</td>' +
+        '<td><span class="pill p-off">' + esc(s.why) + '</span></td></tr>'; }));
 }
 
 /* ================= Messages ================= */

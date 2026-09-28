@@ -142,6 +142,16 @@ function panelData_(token) {
   }).sort(function (a, b) { return String(a.name).localeCompare(String(b.name)); });
 
   /* ---- Schools ---------------------------------------------------------- */
+  // Parked: deliberately out of play until their hours arrive. Mentors never
+  // see them, and they are NOT counted as a fault — but they are listed, so
+  // they cannot be quietly forgotten either.
+  const parked = siteRows.filter(function (s) { return !on(s); }).map(function (s) {
+    return { name: s.name, address: s.address,
+             why: String(s.hours || '').trim()
+               ? 'Has hours — set active to TRUE'
+               : 'Waiting on programme hours' };
+  }).sort(function (a, b) { return String(a.name).localeCompare(String(b.name)); });
+
   const sites = siteRows.filter(on).map(function (s) {
     return {
       id: s.site_id, name: s.name, address: s.address,
@@ -212,11 +222,13 @@ function panelData_(token) {
     what: noStaff.length + ' of ' + sites.length + ' schools have no staff email',
     why: 'That address goes on every calendar invitation and is who the day-of coverage ' +
          'check asks. Without it, no adult at the school is told anything.' });
+  // Only an ACTIVE school with no hours is a fault; a parked one is a decision.
   const noHours = sites.filter(function (s) { return !s.hours.trim(); });
   if (noHours.length) gaps.push({ level: 'bad', tab: 'schools',
-    what: noHours.length + ' schools have no programme hours: ' +
+    what: noHours.length + ' active school(s) have no programme hours: ' +
           noHours.map(function (s) { return s.name; }).join(', '),
-    why: 'They do not appear at all in a mentor’s form, so nobody can choose them.' });
+    why: 'They do not appear at all in a mentor’s form, so nobody can choose them. ' +
+         'Either add the hours, or set active to FALSE to park the school until you have them.' });
   const orphans = allSessions.filter(function (s) { return s.orphan; });
   if (orphans.length) gaps.push({ level: 'bad', tab: 'sessions',
     what: orphans.length + ' sessions point at a pair that no longer exists',
@@ -288,7 +300,8 @@ function panelData_(token) {
       offered: mentors.reduce(function (n, m) { return n + m.offered; }, 0),
       schools: sites.length
     },
-    mentors: mentors, mentees: mentees, sites: sites, sessions: allSessions,
+    mentors: mentors, mentees: mentees, sites: sites, parked: parked,
+    sessions: allSessions,
     templates: templates, feedback: feedback, feedbackAvg: avg,
     activity: activity, gaps: gaps,
     proposals: proposals.proposals, unmatched: proposals.unmatched, idle: proposals.idle

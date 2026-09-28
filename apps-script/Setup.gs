@@ -100,7 +100,7 @@ const SITES_SEED = [
   ['Carol City Middle School', '3737 NW 188th St, Miami Gardens, FL 33055', '',
    'Tue 4:00-6:00; Thu 4:00-6:00'],
   ['Miami Carol City Senior High School', '3301 Miami Gardens Dr, Miami Gardens, FL 33056', '',
-   ''],   // hours not on the roster — mentors see no options until you add them
+   'Mon-Thu 3:00-5:30'],
   ['Miami Beach Nautilus Middle School', '4301 N Michigan Ave, Miami Beach, FL 33140', '',
    'Tue 4:00-6:00; Thu 4:00-6:00'],
   ['Miami Beach Fienberg/Fisher K-8 Center', '1424 Drexel Ave, Miami Beach, FL 33139', '',
@@ -113,8 +113,11 @@ const SITES_SEED = [
    'Mon-Fri 2:30-5:00'],
   ['Henry E. S. Reeves K-8 Center', '2005 NW 111th St, Miami, FL 33167', '',
    'Tue 3:00-5:30; Wed 3:00-5:30; Thu 3:00-5:30'],
-  ['Miami Central Senior High School', '1781 NW 95th St, Miami, FL 33147', '', ''],
-  ['Booker T. Washington Senior High School', '1200 NW 6th Ave, Miami, FL 33136', '', '']
+  // No programme hours from these two yet. They are seeded inactive rather
+  // than left active-and-empty: an active site with no hours is invisible to
+  // mentors anyway, but it reads as a fault. Set active TRUE once hours exist.
+  ['Miami Central Senior High School', '1781 NW 95th St, Miami, FL 33147', '', '', false],
+  ['Booker T. Washington Senior High School', '1200 NW 6th Ave, Miami, FL 33136', '', '', false]
 ];
 
 function loadSites() {
@@ -125,17 +128,30 @@ function loadSites() {
     if (have[r[0]]) return;
     appendRow_('Sites', {
       site_id: uid_('site'), name: r[0], address: r[1],
-      staff_email: r[2], hours: r[3], active: true
+      // r[4] is optional: false parks a site until its hours arrive.
+      staff_email: r[2], hours: r[3], active: r.length > 4 ? !!r[4] : true
     });
     added++;
   });
-  const noHours = SITES_SEED.filter(function (r) { return !r[3]; }).length;
+  const parked = SITES_SEED.filter(function (r) { return r.length > 4 && !r[4]; });
+  const noHours = SITES_SEED.filter(function (r) {
+    return !r[3] && !(r.length > 4 && !r[4]);
+  }).length;
   notify_(
-    added + ' sites added.\n\n' + noHours + ' of them have no program hours yet ' +
-    '(Miami Carol City Senior, Miami Central, Booker T. Washington). Mentors at those ' +
-    'sites will see no date options until you fill the "hours" column.\n\n' +
-    'Format: "Tue 3:10-5:10; Wed 2:00-4:00" or "Mon-Fri 3:00-6:00".\n\n' +
-    'Also worth adding: a staff_email for each site, so the site is on every invite.');
+    added + ' sites added.' +
+    (parked.length
+      ? '\n\n' + parked.length + ' are parked (active = FALSE) because we have no ' +
+        'programme hours for them yet:\n' +
+        parked.map(function (r) { return '\u2022 ' + r[0]; }).join('\n') +
+        '\nMentors never see a parked site. Add the hours and set active to TRUE ' +
+        'to bring it in.'
+      : '') +
+    (noHours
+      ? '\n\n' + noHours + ' active site(s) still have no hours, so mentors there see ' +
+        'no dates at all. Format: "Tue 3:10-5:10; Wed 2:00-4:00" or "Mon-Fri 3:00-6:00".'
+      : '') +
+    '\n\nStill needed on every site: a staff_email. It goes on each calendar ' +
+    'invitation and is who the day-of coverage check asks.');
 }
 
 /* ====================================================================
