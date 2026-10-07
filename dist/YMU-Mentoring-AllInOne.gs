@@ -32,7 +32,10 @@ const CFG = {
     { n: 7, m: 4,  y: 1, label: 'April'    }
   ],
   sessionMinutes: 60,            // one hour per session
-  days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+  // Index 0 is Monday, so weekdayIndex_ maps straight onto this. Saturday
+  // and Sunday are here because Wynwood runs on Sundays; a site only ever
+  // shows the days its own hours mention, so weekday-only sites are unchanged.
+  days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
   blocks: ['2:00','2:30','3:00','3:30','4:00','4:30','5:00','5:30'], // PM start times
   maxReschedules: 2,             // past this, the manager is alerted
   roomsPerSite: 1,              // one pair per site per time slot
@@ -1707,13 +1710,24 @@ function buildMonth(siteId, sessionNo, opts) {
   const picked = opts.picked || {};
   const today = todayIso_();
 
+  // The columns are the weekdays THIS school actually opens, in Mon-to-Sun
+  // order. A Tue/Wed/Thu school gets three columns instead of five with two
+  // permanently empty, and a Sunday-only school gets one. Falling back to the
+  // working week keeps a site with no hours from rendering nothing at all.
+  const openHours = parseHours_(site.hours);
+  let cols = CFG.days.map(function (d, i) { return openHours[d] ? i : -1; })
+                     .filter(function (i) { return i >= 0; });
+  if (!cols.length) cols = [0, 1, 2, 3, 4];
+  const colOf = {};
+  cols.forEach(function (wd, i) { colOf[wd] = i; });
+
   const days = [];
   let openDays = 0, pickedCount = 0;
 
   for (let d = 1; d <= last; d++) {
     const iso = year + '-' + pad(sm.m) + '-' + pad(d);
     const wd = weekdayIndex_(iso);
-    if (wd > 4) continue;                       // Mon–Fri only
+    if (colOf[wd] === undefined) continue;      // not a day this school opens
 
     const closure = closureReason_(iso, siteId);
     const runsToday = !closure && openBlocksOn_(site, wd).length > 0;
@@ -1737,7 +1751,7 @@ function buildMonth(siteId, sessionNo, opts) {
       date: iso,
       dayNum: d,
       weekday: CFG.days[wd],
-      col: wd,
+      col: colOf[wd],
       closed: !!closure,
       reason: closure || (runsToday ? '' : 'No programme this day'),
       past: past,
@@ -1747,12 +1761,12 @@ function buildMonth(siteId, sessionNo, opts) {
     });
   }
 
-  // Pad into calendar weeks so the grid lines up under Mon–Fri headings.
+  // Pad into rows so the grid lines up under its own headings.
   const weeks = [];
-  let week = new Array(5).fill(null);
+  let week = new Array(cols.length).fill(null);
   days.forEach(function (day) {
     if (day.col === 0 && week.some(function (x) { return x; })) {
-      weeks.push(week); week = new Array(5).fill(null);
+      weeks.push(week); week = new Array(cols.length).fill(null);
     }
     week[day.col] = day;
   });
@@ -1763,6 +1777,7 @@ function buildMonth(siteId, sessionNo, opts) {
     label: sm.label + ' ' + year,
     monthName: sm.label,
     siteName: site.name,
+    cols: cols.map(function (i) { return CFG.days[i]; }),
     weeks: weeks,
     openDays: openDays,
     picked: pickedCount,

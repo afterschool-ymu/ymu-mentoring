@@ -72,10 +72,10 @@
   .calhead .mname{font-weight:650;font-size:15px}
   .calnav{display:flex;gap:6px}
   .calnav button{padding:6px 12px;font-size:13px}
-  .cal{width:100%;border-collapse:separate;border-spacing:4px}
+  .cal{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:4px}
   .cal th{font-size:11px;color:var(--muted);font-weight:650;padding-bottom:2px;text-transform:uppercase;
     letter-spacing:.04em}
-  .cal td{width:20%;padding:0;vertical-align:top}
+  .cal td{padding:0;vertical-align:top}
   .day{border:1px solid var(--line);border-radius:9px;padding:6px 4px;min-height:52px;
     text-align:center;cursor:pointer;background:var(--panel);position:relative}
   .day .n{font-size:14px;font-weight:600}
@@ -327,7 +327,7 @@ function bookCalendar(s){
     esc(g.label) + '</span><span class="sub">your available days</span></div>';
 
   h += '<table class="cal"><thead><tr>' +
-    ['Mon','Tue','Wed','Thu','Fri'].map(function(x){ return '<th>' + x + '</th>'; }).join('') +
+    (g.cols || ['Mon','Tue','Wed','Thu','Fri']).map(function(x){ return '<th>' + x + '</th>'; }).join('') +
     '</tr></thead><tbody>';
 
   g.weeks.forEach(function(week){
@@ -627,7 +627,7 @@ function calendarHtml(){
     '</span></div>';
 
   h += '<table class="cal"><thead><tr>' +
-    ['Mon','Tue','Wed','Thu','Fri'].map(function(x){ return '<th>' + x + '</th>'; }).join('') +
+    (g.cols || ['Mon','Tue','Wed','Thu','Fri']).map(function(x){ return '<th>' + x + '</th>'; }).join('') +
     '</tr></thead><tbody>';
 
   g.weeks.forEach(function(week){

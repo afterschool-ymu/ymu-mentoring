@@ -18,7 +18,10 @@ const CFG = {
     { n: 7, m: 4,  y: 1, label: 'April'    }
   ],
   sessionMinutes: 60,            // one hour per session
-  days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+  // Index 0 is Monday, so weekdayIndex_ maps straight onto this. Saturday
+  // and Sunday are here because Wynwood runs on Sundays; a site only ever
+  // shows the days its own hours mention, so weekday-only sites are unchanged.
+  days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
   blocks: ['2:00','2:30','3:00','3:30','4:00','4:30','5:00','5:30'], // PM start times
   maxReschedules: 2,             // past this, the manager is alerted
   roomsPerSite: 1,              // one pair per site per time slot
