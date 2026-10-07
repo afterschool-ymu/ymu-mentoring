@@ -266,6 +266,7 @@ function runCycleRollover_(today, summary) {
 
 /** Cycle mails are about a mentor, not a session, so they need their own sender. */
 function sendCycleMail_(mentor, cycle, key, shortMonth) {
+  if (automationIsPaused_()) return false;   // safety switch
   const t = template_(key);
   if (!t) return false;
   const to = [mentor.email, mentor.guardian1_email, mentor.guardian2_email]

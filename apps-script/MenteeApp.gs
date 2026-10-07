@@ -14,6 +14,37 @@
  * access to exactly one student's sessions — nothing else in the system.
  */
 
+/**
+ * Fills in a mentee_id for any row that has a name but no id.
+ *
+ * Typing ids by hand is where duplicates come from, and a duplicate quietly
+ * attaches one student's sessions to another. Run this after adding rows.
+ */
+function fillMenteeIds() {
+  const rows = readTab_('Mentees');
+  const seen = {};
+  rows.forEach(function (m) { if (m.mentee_id) seen[m.mentee_id] = true; });
+
+  let made = 0, clashes = 0;
+  rows.forEach(function (m) {
+    if (!String(m.name || '').trim()) return;          // blank row, skip
+    if (m.mentee_id) {
+      if (seen[m.mentee_id] === 'used') clashes++;
+      seen[m.mentee_id] = 'used';
+      return;
+    }
+    setCell_('Mentees', m._row, 'mentee_id', uid_('men'));
+    made++;
+  });
+
+  log_('Mentees', 'Filled ' + made + ' missing ids');
+  notify_(made + ' student id' + (made === 1 ? '' : 's') + ' filled in.' +
+    (clashes ? '\n\nWARNING: ' + clashes + ' duplicate mentee_id(s) on the tab. Two ' +
+      'students sharing an id will cross their sessions — fix those by hand.' : '') +
+    '\n\nNext: "Create student booking links".');
+  return made;
+}
+
 /** Creates access tokens for any mentee missing one. */
 function issueMenteeTokens() {
   let made = 0;

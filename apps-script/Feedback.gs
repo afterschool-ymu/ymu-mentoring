@@ -120,6 +120,11 @@ function feedbackLink_(session, pair) {
  * they are still in the room.
  */
 function feedbackTick() {
+  // Reaches the mentor and the guardian, so the pause switch covers it too.
+  if (automationIsPaused_()) {
+    log_('Automation', 'Feedback run skipped — paused');
+    return 0;
+  }
   const now = new Date();
   const today = todayIso_();
   let sent = 0;

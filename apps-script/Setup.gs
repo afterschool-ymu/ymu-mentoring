@@ -23,6 +23,7 @@ function onOpen() {
     .addItem('Email mentors their links', 'emailMentorLinks')
     .addItem('Show all links (do not send)', 'showAllLinks')
     .addItem('Reset a mentor\u2019s availability', 'resetMentorAvailability')
+    .addItem('Fill in missing student ids', 'fillMenteeIds')
     .addItem('Create student booking links', 'issueMenteeTokens')
     .addItem('Email students their links', 'emailMenteeLinks')
     .addSeparator()
