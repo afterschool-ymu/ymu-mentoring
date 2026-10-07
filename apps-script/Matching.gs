@@ -178,6 +178,157 @@ function buildProposals_() {
 }
 
 /* ====================================================================
+   Pairing two people on purpose
+
+   The algorithm proposes; sometimes you already know. This makes that a
+   first-class action rather than hand-typing two generated ids into the
+   Pairs tab, which is where mismatched pairs come from.
+
+   It still checks instrument and school, because a deliberate pair with no
+   usable school is a pair that can never be scheduled — and that failure
+   would not show up until somebody went looking for a session in October.
+   ==================================================================== */
+
+function showManualPair() {
+  const on = function (r) { return r.active === true || r.active === 'TRUE'; };
+  const mentors = readTab_('Mentors').filter(on);
+  const mentees = readTab_('Mentees').filter(on);
+  const sites   = readTab_('Sites').filter(on);
+  const paired  = {};
+  readTab_('Pairs').forEach(function (p) {
+    if (p.approved === true || p.approved === 'TRUE') {
+      paired['m' + p.mentor_id] = true; paired['s' + p.mentee_id] = true;
+    }
+  });
+
+  if (!mentees.length) {
+    notify_('No students on the Mentees tab yet.'); return;
+  }
+
+  const data = {
+    mentors: mentors.map(function (m) {
+      return { id: m.mentor_id, name: m.name, plays: String(m.instruments || ''),
+               level: m.skill_level || '', taken: !!paired['m' + m.mentor_id],
+               prefs: String(m.site_prefs || '').split(',').map(function (x) { return x.trim(); })
+                 .filter(Boolean) };
+    }),
+    mentees: mentees.map(function (m) {
+      return { id: m.mentee_id, name: m.name, plays: String(m.instrument || ''),
+               level: m.skill_level || '', site: m.site_id || '',
+               taken: !!paired['s' + m.mentee_id] };
+    }),
+    sites: sites.map(function (s) {
+      return { id: s.site_id, name: s.name, hours: !!String(s.hours || '').trim() };
+    })
+  };
+
+  function esc(t) {
+    return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+  }
+
+  const html =
+    '<style>' +
+    'body{font:13px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;' +
+    'margin:0;padding:18px;color:#16181d}' +
+    'label{display:block;font-size:11px;font-weight:700;text-transform:uppercase;' +
+    'letter-spacing:.06em;color:#6b7280;margin:14px 0 5px}' +
+    'select{width:100%;font-size:14px;padding:9px 10px;border:1px solid #e3e6ea;' +
+    'border-radius:8px;background:#fff}' +
+    '#chk{margin:15px 0 0;min-height:76px}' +
+    '.ok{background:#e9f7ee;color:#15803d;border-radius:8px;padding:11px 13px;margin:0 0 8px}' +
+    '.warn{background:#fdf5e3;color:#a16207;border-radius:8px;padding:11px 13px;margin:0 0 8px}' +
+    '.bad{background:#fdecea;color:#b3261e;border-radius:8px;padding:11px 13px;margin:0 0 8px}' +
+    'button{background:#3b4cca;color:#fff;border:0;border-radius:8px;padding:11px 20px;' +
+    'font:inherit;font-weight:600;cursor:pointer;margin-top:14px}' +
+    'button:disabled{opacity:.45;cursor:default}' +
+    '#msg{margin-left:10px;color:#6b7280}' +
+    '</style>' +
+    '<label>Student Ambassador</label><select id="mentor"></select>' +
+    '<label>Student</label><select id="mentee"></select>' +
+    '<label>Where their sessions happen</label><select id="site"></select>' +
+    '<div id="chk"></div>' +
+    '<button id="go" disabled>Create this pair</button><span id="msg"></span>' +
+    '<script>' +
+    'var D = ' + JSON.stringify(data).replace(/</g, '\\u003c') + ';' +
+    'function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){' +
+    'return {"&":"&amp;","<":"&lt;",">":"&gt;","\\"":"&quot;"}[c]})}' +
+    'function opt(v,t,d){return "<option value=\\""+esc(v)+"\\""+(d?" disabled":"")+">"+esc(t)+"</option>"}' +
+    'document.getElementById("mentor").innerHTML = opt("","\\u2014 choose \\u2014") +' +
+    ' D.mentors.map(function(m){return opt(m.id, m.name+"  ("+m.plays+(m.taken?", already paired":"")+")")}).join("");' +
+    'document.getElementById("mentee").innerHTML = opt("","\\u2014 choose \\u2014") +' +
+    ' D.mentees.map(function(m){return opt(m.id, m.name+"  ("+m.plays+(m.taken?", already paired":"")+")")}).join("");' +
+    'document.getElementById("site").innerHTML = opt("","\\u2014 choose \\u2014") +' +
+    ' D.sites.map(function(s){return opt(s.id, s.name+(s.hours?"":"  (no hours yet)"))}).join("");' +
+    'function find(a,id){for(var i=0;i<a.length;i++) if(a[i].id===id) return a[i]; return null}' +
+    'function check(){' +
+    ' var mt=find(D.mentors,document.getElementById("mentor").value);' +
+    ' var me=find(D.mentees,document.getElementById("mentee").value);' +
+    ' var st=find(D.sites,document.getElementById("site").value);' +
+    ' var box=document.getElementById("chk"), go=document.getElementById("go"), h="", block=false;' +
+    ' if(me && !document.getElementById("site").value && me.site){' +
+    '   document.getElementById("site").value = me.site; st=find(D.sites,me.site); }' +
+    ' if(!mt || !me){ box.innerHTML=""; go.disabled=true; return; }' +
+    ' var plays = mt.plays.split(",").map(function(x){return x.trim()});' +
+    ' if(plays.indexOf(me.plays.trim())<0){' +
+    '   h += "<div class=\\"bad\\"><b>Different instruments.</b> "+esc(mt.name)+" plays "+esc(mt.plays)+' +
+    '        ", "+esc(me.name)+" plays "+esc(me.plays)+". This is the one rule the matcher never bends.</div>"; }' +
+    ' else { h += "<div class=\\"ok\\">Instrument matches: "+esc(me.plays)+"</div>"; }' +
+    ' if(mt.taken) h += "<div class=\\"warn\\"><b>"+esc(mt.name)+" already has a student.</b> One ambassador per student is the current rule.</div>";' +
+    ' if(me.taken){ h += "<div class=\\"bad\\"><b>"+esc(me.name)+" is already paired.</b></div>"; block=true; }' +
+    ' if(!st){ h += "<div class=\\"bad\\">Pick where the sessions happen. Without a school there is nothing to schedule.</div>"; block=true; }' +
+    ' else {' +
+    '   if(!st.hours) h += "<div class=\\"bad\\"><b>"+esc(st.name)+" has no programme hours.</b> The pair can be created, but no session can ever be booked there until you add them.</div>";' +
+    '   if(mt.prefs.indexOf(st.id)<0) h += "<div class=\\"warn\\"><b>"+esc(mt.name)+" did not choose that school</b>, so they have offered no times there. You will need them to add some.</div>";' +
+    ' }' +
+    ' box.innerHTML = h; go.disabled = block;' +
+    '}' +
+    '["mentor","mentee","site"].forEach(function(id){' +
+    ' document.getElementById(id).addEventListener("change", check)});' +
+    'document.getElementById("go").onclick = function(){' +
+    ' this.disabled = true; document.getElementById("msg").textContent = "Saving\\u2026";' +
+    ' google.script.run.withSuccessHandler(function(m){' +
+    '   document.getElementById("msg").textContent = m;' +
+    '   setTimeout(google.script.host.close, 1500);' +
+    ' }).withFailureHandler(function(e){' +
+    '   document.getElementById("msg").textContent = "Error: " + e.message;' +
+    '   document.getElementById("go").disabled = false;' +
+    ' }).apiManualPair(document.getElementById("mentor").value,' +
+    '                  document.getElementById("mentee").value,' +
+    '                  document.getElementById("site").value);' +
+    '};' +
+    '</script>';
+
+  SpreadsheetApp.getUi().showModalDialog(
+    HtmlService.createHtmlOutput(html).setWidth(560).setHeight(560),
+    'Pair two people');
+}
+
+/** Creates one deliberate pair. Re-checked here; the dialog is not trusted. */
+function apiManualPair(mentorId, menteeId, siteId) {
+  if (!mentorId || !menteeId || !siteId) return 'Nothing selected.';
+
+  const mentor = getMentor_(mentorId);
+  const mentee = getMentee_(menteeId);
+  if (!mentor.mentor_id || !mentee.mentee_id) return 'Could not find one of them.';
+
+  const already = readTab_('Pairs').filter(function (p) {
+    return (p.approved === true || p.approved === 'TRUE') && p.mentee_id === menteeId;
+  })[0];
+  if (already) return mentee.name + ' is already paired.';
+
+  appendRow_('Pairs', {
+    pair_id: uid_('pair'), mentor_id: mentorId, mentee_id: menteeId,
+    instrument: mentee.instrument, site_id: siteId, approved: true,
+    notes: 'Paired by hand ' + todayIso_()
+  });
+  log_('Pairing', 'By hand: ' + mentor.name + ' + ' + mentee.name +
+       ' at ' + (getSite_(siteId).name || siteId));
+  return 'Paired ' + mentor.name + ' with ' + mentee.name + '. Nothing was emailed.';
+}
+
+/* ====================================================================
    The menu item
    ==================================================================== */
 

@@ -17,6 +17,7 @@ function onOpen() {
     .addItem('8. Import from the HTML tool…', 'showImportDialog')
     .addSeparator()
     .addItem('Coordination panel', 'showPanelLink')
+    .addItem('Pair two people by hand', 'showManualPair')
     .addItem('Suggest pairings', 'suggestPairings')
     .addItem('Create missing sessions', 'ensureSessions')
     .addItem('Create mentor links', 'issueMentorTokens')

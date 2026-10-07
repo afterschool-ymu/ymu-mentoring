@@ -25,23 +25,54 @@ function fillMenteeIds() {
   const seen = {};
   rows.forEach(function (m) { if (m.mentee_id) seen[m.mentee_id] = true; });
 
-  let made = 0, clashes = 0;
+  // site_id may be typed as a school NAME. Resolving it here means nobody has
+  // to copy a generated id by hand, which is the other place silent errors
+  // come from: a wrong id leaves a student with no school and no pairing.
+  const sites = readTab_('Sites');
+  const byId = {}, byName = {};
+  sites.forEach(function (st) {
+    byId[st.site_id] = true;
+    byName[normaliseSchool_(st.name)] = st.site_id;
+  });
+
+  let made = 0, clashes = 0, resolved = 0;
+  const unknownSites = [];
+
   rows.forEach(function (m) {
     if (!String(m.name || '').trim()) return;          // blank row, skip
+
     if (m.mentee_id) {
       if (seen[m.mentee_id] === 'used') clashes++;
       seen[m.mentee_id] = 'used';
-      return;
+    } else {
+      setCell_('Mentees', m._row, 'mentee_id', uid_('men'));
+      made++;
     }
-    setCell_('Mentees', m._row, 'mentee_id', uid_('men'));
-    made++;
+
+    const raw = String(m.site_id || '').trim();
+    if (!raw || byId[raw]) return;                     // blank or already an id
+    const hit = byName[normaliseSchool_(raw)];
+    if (hit) {
+      setCell_('Mentees', m._row, 'site_id', hit);
+      resolved++;
+    } else {
+      unknownSites.push(m.name + ' \u2014 "' + raw + '"');
+    }
   });
 
-  log_('Mentees', 'Filled ' + made + ' missing ids');
-  notify_(made + ' student id' + (made === 1 ? '' : 's') + ' filled in.' +
+  log_('Mentees', 'Filled ' + made + ' ids, resolved ' + resolved + ' school names');
+  notify_(
+    made + ' student id' + (made === 1 ? '' : 's') + ' filled in.' +
+    (resolved ? '\n' + resolved + ' school name(s) matched to a site.' : '') +
     (clashes ? '\n\nWARNING: ' + clashes + ' duplicate mentee_id(s) on the tab. Two ' +
-      'students sharing an id will cross their sessions — fix those by hand.' : '') +
-    '\n\nNext: "Create student booking links".');
+      'students sharing an id will cross their sessions \u2014 fix those by hand.' : '') +
+    (unknownSites.length
+      ? '\n\nThese school names matched nothing on the Sites tab, so those students ' +
+        'have no school and cannot be paired:\n\u2022 ' +
+        unknownSites.join('\n\u2022 ') +
+        '\n\nCheck the spelling against the Sites tab, or the school is not one of ours.'
+      : '') +
+    '\n\nNext: "Suggest pairings".');
   return made;
 }
 
