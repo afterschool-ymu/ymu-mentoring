@@ -184,6 +184,8 @@ function readableHours_(site) {
       const hh = Math.floor(x), mm = Math.round((x - hh) * 60);
       return (hh > 12 ? hh - 12 : hh) + ':' + (mm < 10 ? '0' : '') + mm;
     };
-    return d + ' ' + fmt(h[d][0]) + '–' + fmt(h[d][1]);
+    return d + ' ' + h[d].map(function (w) {
+      return fmt(w[0]) + '–' + fmt(w[1]);
+    }).join(' & ');
   }).join(', ');
 }

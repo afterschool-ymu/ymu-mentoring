@@ -22,7 +22,12 @@ const CFG = {
   // and Sunday are here because Wynwood runs on Sundays; a site only ever
   // shows the days its own hours mention, so weekday-only sites are unchanged.
   days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-  blocks: ['2:00','2:30','3:00','3:30','4:00','4:30','5:00','5:30'], // PM start times
+  // All PM. The early ones exist for weekend sites: a Sunday ensemble that
+  // finishes at 12:30 can mentor at 1:00 and still be gone by 2:00. Every
+  // site filters these against its own hours, so a weekday site that opens
+  // at 2:00 never sees them.
+  blocks: ['12:30','1:00','1:30',
+           '2:00','2:30','3:00','3:30','4:00','4:30','5:00','5:30'],
   maxReschedules: 2,             // past this, the manager is alerted
   roomsPerSite: 1,              // one pair per site per time slot
 
@@ -262,7 +267,11 @@ function toDate_(iso, timeLabel) {
    Stored human-readably in the sheet, e.g.
      "Tue 3:10-5:10; Wed 2:00-4:00"
      "Mon-Fri 3:00-6:00; Wed 2:00-6:00"
-   Later segments override earlier ones for the same day.
+   A day may have more than one window, which is how a weekend site works
+   around a rehearsal that sits in the middle of its afternoon:
+     "Sun 12:30-2:00; Sun 4:00-5:30"
+   Segments for the same day add up; overlapping ones are merged, so the
+   older habit of widening a day with a second segment still behaves.
    ==================================================================== */
 
 function parseHours_(text) {
@@ -279,8 +288,22 @@ function parseHours_(text) {
     const s = parseClock_(m[3]), e = parseClock_(m[4]);
     if (!s || !e) { log_('Unknown time in hours', seg); return; }
     for (let i = from; i <= to; i++) {
-      out[CFG.days[i]] = [s.h + s.min / 60, e.h + e.min / 60];
+      const day = CFG.days[i];
+      (out[day] = out[day] || []).push([s.h + s.min / 60, e.h + e.min / 60]);
     }
+  });
+  Object.keys(out).forEach(function (d) { out[d] = mergeWindows_(out[d]); });
+  return out;
+}
+
+/** Sorts windows and joins any that touch, so a day is a tidy list of gaps. */
+function mergeWindows_(wins) {
+  const sorted = wins.slice().sort(function (a, b) { return a[0] - b[0]; });
+  const out = [];
+  sorted.forEach(function (w) {
+    const last = out[out.length - 1];
+    if (last && w[0] <= last[1]) last[1] = Math.max(last[1], w[1]);
+    else out.push([w[0], w[1]]);
   });
   return out;
 }
@@ -292,12 +315,14 @@ function titleCase_(s) {
 /** Which 30-minute blocks fit inside a site's window on a given weekday. */
 function openBlocksOn_(site, dayIndex) {
   const hours = parseHours_(site.hours);
-  const w = hours[CFG.days[dayIndex]];
-  if (!w) return [];
+  const wins = hours[CFG.days[dayIndex]];
+  if (!wins || !wins.length) return [];
   return CFG.blocks.filter(function (b) {
     const c = parseClock_(b);
     const start = c.h + c.min / 60;
-    return start >= w[0] - 1e-9 && start + CFG.sessionMinutes / 60 <= w[1] + 1e-9;
+    return wins.some(function (w) {
+      return start >= w[0] - 1e-9 && start + CFG.sessionMinutes / 60 <= w[1] + 1e-9;
+    });
   });
 }
 
