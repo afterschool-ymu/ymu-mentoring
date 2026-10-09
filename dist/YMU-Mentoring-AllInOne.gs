@@ -2263,10 +2263,30 @@ function offeredCount_(mentorId, siteId, cycle) {
 }
 
 /**
- * Scores one possible pair, or returns null when the instrument rules it out.
+ * One person can sit on both rosters: an ambassador who also receives coaching
+ * on their own instrument. What must never happen is the two halves of that
+ * person being paired with each other — the instrument rule alone would be
+ * delighted to match a guitarist with themselves.
+ *
+ * Email is the identity we trust; names are the fallback for rows that have
+ * none, and a name collision is worth a false positive here.
+ */
+function samePerson_(mentor, mentee) {
+  const mEmail = String(mentor.email || '').trim().toLowerCase();
+  const sEmail = String(mentee.student_email || '').trim().toLowerCase();
+  if (mEmail && sEmail && mEmail === sEmail) return true;
+
+  const mName = String(mentor.name || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  const sName = String(mentee.name || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  return !!mName && mName === sName;
+}
+
+/**
+ * Scores one possible pair, or returns null when a hard rule forbids it.
  * Flags are the reasons a human might still say no.
  */
 function scorePair_(mentor, mentee, cycle) {
+  if (samePerson_(mentor, mentee)) return null;
   if (splitList_(mentor.instruments).indexOf(String(mentee.instrument).trim()) < 0) return null;
 
   const flags = [];
@@ -2334,7 +2354,7 @@ function buildProposals_() {
       const mentee = byId_(mentees, 'mentee_id', p.mentee_id);
       if (!mentor || !mentee) return;          // someone left — free them to rematch
       const sc = scorePair_(mentor, mentee, cycle) ||
-                 { score: 0, flags: ['No longer satisfies the instrument rule'], offered: 0 };
+                 { score: 0, flags: ['No longer satisfies the matching rules'], offered: 0 };
       usedMentors[mentor.mentor_id] = true;
       usedMentees[mentee.mentee_id] = true;
       load[mentor.mentor_id] = (load[mentor.mentor_id] || 0) + 1;
@@ -2424,12 +2444,14 @@ function showManualPair() {
   const data = {
     mentors: mentors.map(function (m) {
       return { id: m.mentor_id, name: m.name, plays: String(m.instruments || ''),
+               email: String(m.email || '').trim().toLowerCase(),
                level: m.skill_level || '', taken: !!paired['m' + m.mentor_id],
                prefs: String(m.site_prefs || '').split(',').map(function (x) { return x.trim(); })
                  .filter(Boolean) };
     }),
     mentees: mentees.map(function (m) {
       return { id: m.mentee_id, name: m.name, plays: String(m.instrument || ''),
+               email: String(m.student_email || '').trim().toLowerCase(),
                level: m.skill_level || '', site: m.site_id || '',
                taken: !!paired['s' + m.mentee_id] };
     }),
@@ -2486,6 +2508,11 @@ function showManualPair() {
     ' if(me && !document.getElementById("site").value && me.site){' +
     '   document.getElementById("site").value = me.site; st=find(D.sites,me.site); }' +
     ' if(!mt || !me){ box.innerHTML=""; go.disabled=true; return; }' +
+    ' if((mt.email && me.email && mt.email===me.email) ||' +
+    '    mt.name.trim().toLowerCase()===me.name.trim().toLowerCase()){' +
+    '   box.innerHTML = "<div class=\\"bad\\"><b>That is the same person.</b> "+esc(mt.name)+' +
+    '     " can both give mentoring and receive it, but not from themselves.</div>";' +
+    '   go.disabled = true; return; }' +
     ' var plays = mt.plays.split(",").map(function(x){return x.trim()});' +
     ' if(plays.indexOf(me.plays.trim())<0){' +
     '   h += "<div class=\\"bad\\"><b>Different instruments.</b> "+esc(mt.name)+" plays "+esc(mt.plays)+' +
@@ -2528,6 +2555,11 @@ function apiManualPair(mentorId, menteeId, siteId) {
   const mentor = getMentor_(mentorId);
   const mentee = getMentee_(menteeId);
   if (!mentor.mentor_id || !mentee.mentee_id) return 'Could not find one of them.';
+
+  if (samePerson_(mentor, mentee)) {
+    return 'That is the same person. ' + mentor.name + ' can give mentoring and ' +
+           'receive it, but not from themselves — pick a different ambassador.';
+  }
 
   const already = readTab_('Pairs').filter(function (p) {
     return (p.approved === true || p.approved === 'TRUE') && p.mentee_id === menteeId;
