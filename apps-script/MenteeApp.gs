@@ -35,8 +35,8 @@ function fillMenteeIds() {
     byName[normaliseSchool_(st.name)] = st.site_id;
   });
 
-  let made = 0, clashes = 0, resolved = 0;
-  const unknownSites = [];
+  let made = 0, clashes = 0, resolved = 0, activated = 0;
+  const unknownSites = [], noSite = [];
 
   rows.forEach(function (m) {
     if (!String(m.name || '').trim()) return;          // blank row, skip
@@ -49,8 +49,17 @@ function fillMenteeIds() {
       made++;
     }
 
+    // A row typed by hand arrives with this blank, and blank is not TRUE: the
+    // student then exists but appears in no dialog and no report, with nothing
+    // to say why. Default it here rather than let that happen silently again.
+    if (m.active !== true && String(m.active || '').trim().toUpperCase() !== 'TRUE') {
+      setCell_('Mentees', m._row, 'active', true);
+      activated++;
+    }
+
     const raw = String(m.site_id || '').trim();
-    if (!raw || byId[raw]) return;                     // blank or already an id
+    if (!raw) { noSite.push(m.name); return; }         // no school to resolve
+    if (byId[raw]) return;                             // already an id
     const hit = byName[normaliseSchool_(raw)];
     if (hit) {
       setCell_('Mentees', m._row, 'site_id', hit);
@@ -60,10 +69,17 @@ function fillMenteeIds() {
     }
   });
 
-  log_('Mentees', 'Filled ' + made + ' ids, resolved ' + resolved + ' school names');
+  log_('Mentees', 'Filled ' + made + ' ids, resolved ' + resolved +
+       ' school names, switched on ' + activated);
   notify_(
     made + ' student id' + (made === 1 ? '' : 's') + ' filled in.' +
     (resolved ? '\n' + resolved + ' school name(s) matched to a site.' : '') +
+    (activated ? '\n' + activated + ' student(s) switched on \u2014 their "active" ' +
+      'column was blank, which would have hidden them everywhere.' : '') +
+    (noSite.length
+      ? '\n\nNo school on file for:\n\u2022 ' + noSite.join('\n\u2022 ') +
+        '\n\nThey cannot be paired until the site_id column has their school.'
+      : '') +
     (clashes ? '\n\nWARNING: ' + clashes + ' duplicate mentee_id(s) on the tab. Two ' +
       'students sharing an id will cross their sessions \u2014 fix those by hand.' : '') +
     (unknownSites.length
