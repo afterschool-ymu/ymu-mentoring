@@ -214,7 +214,19 @@ function intakeData_(mentor, intake) {
     d.months = cyc ? cycleMonths_(cyc).map(function (m) {
       return { n: m.n, label: m.label };
     }) : [];
-    d.chosen = intake.prefs.map(function (siteId) {
+    // A school deleted from the Sites tab is no longer a choice. Left in, it
+    // reaches the page as a nameless school whose calendar never loads, and
+    // if it happens to be first, nothing else loads either.
+    const liveSites = {};
+    readTab_('Sites').forEach(function (st) { liveSites[st.site_id] = true; });
+    const gone = intake.prefs.filter(function (id) { return !liveSites[id]; });
+    if (gone.length) {
+      log_('Intake', mentor.name + ' has ' + gone.length +
+           ' school(s) in site_prefs that no longer exist: ' + gone.join(', '));
+    }
+
+    d.chosen = intake.prefs.filter(function (id) { return liveSites[id]; })
+      .map(function (siteId) {
       const site = getSite_(siteId);
       const st = intake.perSite.filter(function (p) { return p.site_id === siteId; })[0] || {};
       return {
@@ -223,6 +235,11 @@ function intakeData_(mentor, intake) {
         problems: st.problems || [], counts: st.counts || []
       };
     });
+    // Everything they picked has since been removed, so there is nothing to
+    // show a calendar for. Send them back to choose again rather than render
+    // an empty step 3.
+    if (!d.chosen.length) { d.step = 2; return d; }
+
     // The calendar the page opens on: first school, first month still short.
     const first = d.chosen[0];
     if (first) {

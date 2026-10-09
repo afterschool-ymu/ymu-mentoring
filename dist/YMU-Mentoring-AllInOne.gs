@@ -446,6 +446,7 @@ function onOpen() {
     .addItem('Create student booking links', 'issueMenteeTokens')
     .addItem('Email students their links', 'emailMenteeLinks')
     .addSeparator()
+    .addItem('Check the workbook for broken links', 'checkReferences')
     .addItem('Pause / resume automation', 'toggleAutomation')
     .addItem('Reset the panel link', 'resetPanelLink')
     .addItem('Install automation', 'installTriggers')
@@ -810,6 +811,101 @@ function showAllLinks() {
    the daily job chases every mentor who has not filled in their form.
    This makes that a decision you take on purpose.
    ==================================================================== */
+
+/**
+ * The tabs are joined by id and nothing enforces that. Deleting a school row
+ * is the easy way to break it: the id lives on in a mentor's preferences, in
+ * a student's row, in a pair. Each of those fails quietly and differently,
+ * so this names them all in one place.
+ */
+function checkReferences() {
+  const sites   = readTab_('Sites');
+  const mentors = readTab_('Mentors');
+  const mentees = readTab_('Mentees');
+  const pairs   = readTab_('Pairs');
+
+  const known = function (rows, field) {
+    const m = {};
+    rows.forEach(function (r) { if (r[field]) m[String(r[field]).trim()] = r; });
+    return m;
+  };
+  const siteOk   = known(sites, 'site_id');
+  const mentorOk = known(mentors, 'mentor_id');
+  const menteeOk = known(mentees, 'mentee_id');
+  const pairOk   = known(pairs, 'pair_id');
+
+  const problems = [];
+  const note = function (what) { problems.push(what); };
+
+  mentors.forEach(function (m) {
+    splitList_(m.site_prefs).forEach(function (id) {
+      if (!siteOk[id]) {
+        note(m.name + ' (ambassador) prefers a school that no longer exists: ' + id);
+      }
+    });
+  });
+
+  mentees.forEach(function (m) {
+    const id = String(m.site_id || '').trim();
+    if (!m.name) return;
+    if (!id) note(m.name + ' (student) has no school at all');
+    else if (!siteOk[id]) note(m.name + ' (student) is at a school that no longer exists: ' + id);
+  });
+
+  pairs.forEach(function (p) {
+    const who = (menteeOk[p.mentee_id] || {}).name || p.mentee_id;
+    if (!siteOk[String(p.site_id || '').trim()]) {
+      note('The pair for ' + who + ' meets at a school that no longer exists: ' + p.site_id);
+    }
+    if (!mentorOk[p.mentor_id]) note('A pair points at a missing ambassador: ' + p.mentor_id);
+    if (!menteeOk[p.mentee_id]) note('A pair points at a missing student: ' + p.mentee_id);
+  });
+
+  readTab_('Sessions').forEach(function (s) {
+    if (s.pair_id && !pairOk[s.pair_id]) {
+      note('Session ' + s.session_id + ' belongs to a pair that no longer exists');
+    }
+  });
+
+  const orphanAvail = {};
+  readTab_('Availability').forEach(function (a) {
+    if (a.site_id && !siteOk[a.site_id]) {
+      const who = (mentorOk[a.mentor_id] || {}).name || a.mentor_id;
+      orphanAvail[who + '|' + a.site_id] = true;
+    }
+  });
+  Object.keys(orphanAvail).forEach(function (k) {
+    const bits = k.split('|');
+    note(bits[0] + ' has offered times at a school that no longer exists: ' + bits[1]);
+  });
+
+  // Not broken, but the usual reason a Wynwood-style site misbehaves.
+  const advice = [];
+  sites.forEach(function (st) {
+    if (isInternalSite_(st) && siteRooms_(st) === 1) {
+      advice.push(st.name + ' is internal but has no "rooms" set, so only one ' +
+                  'pair can meet there at a time.');
+    }
+    if (!String(st.hours || '').trim()) {
+      advice.push(st.name + ' has no programme hours, so no session can be booked there.');
+    }
+    if (!String(st.staff_email || '').trim()) {
+      advice.push(st.name + ' has no staff email, so nobody there is told about a session.');
+    }
+  });
+
+  log_('Check', problems.length + ' broken reference(s), ' + advice.length + ' warning(s)');
+  notify_(
+    (problems.length
+      ? 'BROKEN \u2014 these point at rows that are not there:\n\u2022 ' +
+        problems.join('\n\u2022 ') +
+        '\n\nFix each one by pointing it at a school that exists, or by ' +
+        'removing it.\n\n'
+      : 'No broken references. Every id lines up.\n\n') +
+    (advice.length
+      ? 'WORTH A LOOK:\n\u2022 ' + advice.join('\n\u2022 ')
+      : 'Nothing else to flag.'));
+}
 
 function automationIsPaused_() {
   const flag = PropertiesService.getScriptProperties().getProperty('automationPaused');
@@ -4826,7 +4922,19 @@ function intakeData_(mentor, intake) {
     d.months = cyc ? cycleMonths_(cyc).map(function (m) {
       return { n: m.n, label: m.label };
     }) : [];
-    d.chosen = intake.prefs.map(function (siteId) {
+    // A school deleted from the Sites tab is no longer a choice. Left in, it
+    // reaches the page as a nameless school whose calendar never loads, and
+    // if it happens to be first, nothing else loads either.
+    const liveSites = {};
+    readTab_('Sites').forEach(function (st) { liveSites[st.site_id] = true; });
+    const gone = intake.prefs.filter(function (id) { return !liveSites[id]; });
+    if (gone.length) {
+      log_('Intake', mentor.name + ' has ' + gone.length +
+           ' school(s) in site_prefs that no longer exist: ' + gone.join(', '));
+    }
+
+    d.chosen = intake.prefs.filter(function (id) { return liveSites[id]; })
+      .map(function (siteId) {
       const site = getSite_(siteId);
       const st = intake.perSite.filter(function (p) { return p.site_id === siteId; })[0] || {};
       return {
@@ -4835,6 +4943,11 @@ function intakeData_(mentor, intake) {
         problems: st.problems || [], counts: st.counts || []
       };
     });
+    // Everything they picked has since been removed, so there is nothing to
+    // show a calendar for. Send them back to choose again rather than render
+    // an empty step 3.
+    if (!d.chosen.length) { d.step = 2; return d; }
+
     // The calendar the page opens on: first school, first month still short.
     const first = d.chosen[0];
     if (first) {
