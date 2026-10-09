@@ -39,6 +39,11 @@ const CFG = {
 
   // ---- Mentor intake ---------------------------------------------------
   suggestCount: 3,               // how many nearby schools to put forward
+  // A student can only be paired with an ambassador who put THEIR school on
+  // this list. One school each leaves whole sites with nobody to draw on, so
+  // two is the floor and three is what we ask for. Enforced on both sides.
+  minSitePrefs: 2,
+  preferSitePrefs: 3,
   maxSitePrefs: 5,               // how many they may choose in total
   minSlotsPerMonth: 2,           // every month needs this many offered times, per school
   encourageSlots: 6,             // what we ask for per month — more choice, better matching

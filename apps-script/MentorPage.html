@@ -448,6 +448,7 @@ function renderIntake(d){
   else                  h += stepSlots(d);
 
   document.getElementById('app').innerHTML = h;
+  if(d.step === 2) updateSiteTally();
 }
 
 function stepChip(n, label, cur){
@@ -497,12 +498,20 @@ function stepSites(d){
   d.sites.forEach(function(s){ if(s.chosen) chosen[s.site_id] = true; });
   window.SITEPICK = chosen;
 
+  // Never ask for more schools than we actually showed them.
+  var need = Math.min(d.minPrefs || 1, d.sites.length) || 1;
+  window.SITENEED = need;
+
   var h = '<div class="card"><h2>Which schools could you get to?</h2>' +
     '<p class="sub">Sorted by how far they are from ' +
     (d.travelKind === 'home' ? 'your home' : 'your school') +
     '. The top ' + d.suggestCount + ' are the easiest for you to reach — picking one of those ' +
-    'means less travelling on a school afternoon. Choose as many as you would genuinely go to, ' +
-    'up to ' + d.maxPrefs + '.</p>';
+    'means less travelling on a school afternoon.</p>' +
+    '<p class="sub">Please choose <b>at least ' + need + '</b>' +
+    (d.preferPrefs > need ? ', and ' + d.preferPrefs + ' if you can' : '') +
+    ' — up to ' + d.maxPrefs + '. We can only pair you with a student at a school on ' +
+    'this list, so a single school often means we cannot pair you at all. Only tick the ones ' +
+    'you would genuinely travel to.</p>';
 
   d.sites.forEach(function(s, i){
     var bits = [];
@@ -520,7 +529,8 @@ function stepSites(d){
       '</span></label>';
   });
 
-  h += '<div style="margin-top:14px"><button onclick="saveSites()">Continue</button> ' +
+  h += '<p class="sub" id="siteTally" style="margin-top:14px;font-weight:600"></p>' +
+    '<div><button id="siteGo" onclick="saveSites()">Continue</button> ' +
     '<button class="ghost" onclick="backToAddress()">Change my address</button> ' +
     '<span class="spin" id="siteSpin"></span></div></div>';
   return h;
@@ -530,6 +540,39 @@ function toggleSite(el){
   window.SITEPICK[el.value] = el.checked;
   var box = document.getElementById('sitebox_' + el.value);
   if(box) box.classList.toggle('pick', el.checked);
+  updateSiteTally();
+}
+
+function sitePickCount(){
+  return Object.keys(window.SITEPICK || {}).filter(function(k){
+    return window.SITEPICK[k];
+  }).length;
+}
+
+/* Says what is still missing and holds Continue shut until it is not. A
+   disabled button with no explanation reads as a broken page, so the count
+   and the reason are always on screen next to it. */
+function updateSiteTally(){
+  var n = sitePickCount(), need = window.SITENEED || 1;
+  var tally = document.getElementById('siteTally');
+  var go = document.getElementById('siteGo');
+  if(!tally || !go) return;
+
+  var short = need - n;
+  if(short > 0){
+    tally.textContent = n === 0
+      ? 'Choose ' + need + ' school' + (need === 1 ? '' : 's') + ' to continue.'
+      : short + ' more school' + (short === 1 ? '' : 's') + ' needed — ' +
+        n + ' of ' + need + ' chosen.';
+    tally.style.color = 'var(--warn)';
+    go.disabled = true;
+  } else {
+    tally.textContent = n + ' school' + (n === 1 ? '' : 's') + ' chosen.' +
+      (DATA.preferPrefs && n < DATA.preferPrefs && n < DATA.sites.length
+        ? ' One more would give us a better chance of matching you.' : '');
+    tally.style.color = '';
+    go.disabled = false;
+  }
 }
 
 function backToAddress(){
@@ -538,7 +581,12 @@ function backToAddress(){
 
 function saveSites(){
   var ids = Object.keys(window.SITEPICK).filter(function(k){ return window.SITEPICK[k]; });
-  if(!ids.length){ toast('Pick at least one school.'); return; }
+  var need = window.SITENEED || 1;
+  if(ids.length < need){
+    toast(need === 1 ? 'Pick at least one school.'
+                     : 'Please pick at least ' + need + ' schools.');
+    return;
+  }
   busy('siteSpin', true, 'Saving…');
   google.script.run
     .withSuccessHandler(function(r){

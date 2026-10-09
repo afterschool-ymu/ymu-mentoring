@@ -53,6 +53,11 @@ const CFG = {
 
   // ---- Mentor intake ---------------------------------------------------
   suggestCount: 3,               // how many nearby schools to put forward
+  // A student can only be paired with an ambassador who put THEIR school on
+  // this list. One school each leaves whole sites with nobody to draw on, so
+  // two is the floor and three is what we ask for. Enforced on both sides.
+  minSitePrefs: 2,
+  preferSitePrefs: 3,
   maxSitePrefs: 5,               // how many they may choose in total
   minSlotsPerMonth: 2,           // every month needs this many offered times, per school
   encourageSlots: 6,             // what we ask for per month — more choice, better matching
@@ -4724,6 +4729,8 @@ function intakeData_(mentor, intake) {
     minPerMonth: CFG.minSlotsPerMonth,
     encourage: CFG.encourageSlots,
     suggestCount: CFG.suggestCount,
+    minPrefs: CFG.minSitePrefs,
+    preferPrefs: CFG.preferSitePrefs,
     maxPrefs: CFG.maxSitePrefs,
     sessionMinutes: CFG.sessionMinutes
   };
@@ -4938,7 +4945,16 @@ function apiSaveSites(tok, siteIds) {
   const me = whoAmI_(tok);
   if (!me.ok) return { ok: false, message: me.message };
   siteIds = (siteIds || []).filter(Boolean);
-  if (!siteIds.length) return { ok: false, message: 'Choose at least one school.' };
+  // Capped at what they were actually offered: a mentor shown one reachable
+  // school must not be locked out of their own form by a rule about two.
+  const offered = rankSitesFor(me.mentor.mentor_id).length;
+  const need = Math.min(CFG.minSitePrefs, offered) || 1;
+  if (siteIds.length < need) {
+    return { ok: false, message: need === 1
+      ? 'Choose at least one school.'
+      : 'Please choose at least ' + need + ' schools. With only one, there may be ' +
+        'no student there to pair you with.' };
+  }
   if (siteIds.length > CFG.maxSitePrefs) {
     return { ok: false, message: 'Please choose no more than ' + CFG.maxSitePrefs + ' schools.' };
   }

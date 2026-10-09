@@ -183,6 +183,8 @@ function intakeData_(mentor, intake) {
     minPerMonth: CFG.minSlotsPerMonth,
     encourage: CFG.encourageSlots,
     suggestCount: CFG.suggestCount,
+    minPrefs: CFG.minSitePrefs,
+    preferPrefs: CFG.preferSitePrefs,
     maxPrefs: CFG.maxSitePrefs,
     sessionMinutes: CFG.sessionMinutes
   };
@@ -397,7 +399,16 @@ function apiSaveSites(tok, siteIds) {
   const me = whoAmI_(tok);
   if (!me.ok) return { ok: false, message: me.message };
   siteIds = (siteIds || []).filter(Boolean);
-  if (!siteIds.length) return { ok: false, message: 'Choose at least one school.' };
+  // Capped at what they were actually offered: a mentor shown one reachable
+  // school must not be locked out of their own form by a rule about two.
+  const offered = rankSitesFor(me.mentor.mentor_id).length;
+  const need = Math.min(CFG.minSitePrefs, offered) || 1;
+  if (siteIds.length < need) {
+    return { ok: false, message: need === 1
+      ? 'Choose at least one school.'
+      : 'Please choose at least ' + need + ' schools. With only one, there may be ' +
+        'no student there to pair you with.' };
+  }
   if (siteIds.length > CFG.maxSitePrefs) {
     return { ok: false, message: 'Please choose no more than ' + CFG.maxSitePrefs + ' schools.' };
   }
