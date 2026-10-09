@@ -111,7 +111,7 @@ const HEADERS = {
   // off: we still schedule there, we just place people by hand. Appended
   // last because setCell_ maps fields to columns by position.
   Sites:   ['site_id','name','address','staff_email','hours','lat','lng','active',
-            'internal'],
+            'internal','rooms'],
   Mentors: ['mentor_id','name','email','phone','grade','school','instruments',
             'skill_level','guardian1_name','guardian1_email','guardian2_name',
             'guardian2_email','travel_from','travel_kind','travel_lat','travel_lng',
@@ -310,6 +310,17 @@ function mergeWindows_(wins) {
 
 function titleCase_(s) {
   return s.charAt(0).toUpperCase() + s.slice(1, 3).toLowerCase();
+}
+
+/**
+ * How many pairs can meet at a site at the same time. A school lends us one
+ * room, which is why one used to be hard-wired; Wynwood has several practice
+ * rooms. Blank or unreadable reads as 1, so a site that never fills this in
+ * behaves exactly as before.
+ */
+function siteRooms_(site) {
+  const n = Math.floor(Number(site && site.rooms));
+  return n >= 1 ? n : 1;
 }
 
 /** Which 30-minute blocks fit inside a site's window on a given weekday. */

@@ -44,9 +44,15 @@ function takenSlots_(siteId, exceptSessionId) {
     if (!s.date || !s.time) return;
     if (['missed', 'cancelled'].indexOf(s.status) >= 0) return;
     if (!pairsAtSite[s.pair_id]) return;
-    out[s.date + '#' + s.time] = s.session_id;
+    const key = s.date + '#' + s.time;
+    (out[key] = out[key] || []).push(s.session_id);
   });
   return out;
+}
+
+/** True when every room at a site is spoken for at that date and time. */
+function slotIsFull_(taken, site, date, time) {
+  return (taken[date + '#' + time] || []).length >= siteRooms_(site);
 }
 
 /**
@@ -93,12 +99,20 @@ function bookSession(sessionId, date, time, opts) {
 
     // Is the site free then?
     const taken = takenSlots_(pair.site_id, sessionId);
-    if (taken[date + '#' + time]) {
-      const other = byId_(rows, 'session_id', taken[date + '#' + time]);
-      const otherPair = getPair_(other.pair_id);
-      return { ok: false, message: 'That time at ' + site.name + ' is already taken by ' +
-               getMentor_(otherPair.mentor_id).name + ' and ' +
-               getMentee_(otherPair.mentee_id).name + '. Please pick another.' };
+    if (slotIsFull_(taken, site, date, time)) {
+      const rooms = siteRooms_(site);
+      const others = (taken[date + '#' + time] || []).map(function (id) {
+        const other = byId_(rows, 'session_id', id);
+        const otherPair = other ? getPair_(other.pair_id) : null;
+        return otherPair
+          ? getMentor_(otherPair.mentor_id).name + ' and ' + getMentee_(otherPair.mentee_id).name
+          : '';
+      }).filter(Boolean);
+      return { ok: false, message: rooms === 1
+        ? 'That time at ' + site.name + ' is already taken by ' + others[0] +
+          '. Please pick another.'
+        : 'All ' + rooms + ' rooms at ' + site.name + ' are busy then (' +
+          others.join('; ') + '). Please pick another.' };
     }
 
     const moving = !!(isoOf_(s.date) && (isoOf_(s.date) !== date || s.time !== time));

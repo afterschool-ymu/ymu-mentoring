@@ -125,7 +125,7 @@ const HEADERS = {
   // off: we still schedule there, we just place people by hand. Appended
   // last because setCell_ maps fields to columns by position.
   Sites:   ['site_id','name','address','staff_email','hours','lat','lng','active',
-            'internal'],
+            'internal','rooms'],
   Mentors: ['mentor_id','name','email','phone','grade','school','instruments',
             'skill_level','guardian1_name','guardian1_email','guardian2_name',
             'guardian2_email','travel_from','travel_kind','travel_lat','travel_lng',
@@ -324,6 +324,17 @@ function mergeWindows_(wins) {
 
 function titleCase_(s) {
   return s.charAt(0).toUpperCase() + s.slice(1, 3).toLowerCase();
+}
+
+/**
+ * How many pairs can meet at a site at the same time. A school lends us one
+ * room, which is why one used to be hard-wired; Wynwood has several practice
+ * rooms. Blank or unreadable reads as 1, so a site that never fills this in
+ * behaves exactly as before.
+ */
+function siteRooms_(site) {
+  const n = Math.floor(Number(site && site.rooms));
+  return n >= 1 ? n : 1;
 }
 
 /** Which 30-minute blocks fit inside a site's window on a given weekday. */
@@ -1782,7 +1793,7 @@ function buildMonth(siteId, sessionNo, opts) {
         return {
           time: t,
           picked: !!picked[iso + '|' + t],
-          taken: !!taken[iso + '#' + t]
+          taken: opts.checkTaken ? slotIsFull_(taken, site, iso, t) : false
         };
       });
       if (opts.onlyPicked) times = times.filter(function (t) { return t.picked; });
@@ -1977,7 +1988,7 @@ function sessionOptions(pairId, sessionNo, exceptSessionId) {
     .map(function (a) {
       return {
         date: a.date, time: a.time, label: prettyDate_(a.date),
-        taken: !!taken[a.date + '#' + a.time]
+        taken: slotIsFull_(taken, site, a.date, a.time)
       };
     });
 }
@@ -2032,9 +2043,15 @@ function takenSlots_(siteId, exceptSessionId) {
     if (!s.date || !s.time) return;
     if (['missed', 'cancelled'].indexOf(s.status) >= 0) return;
     if (!pairsAtSite[s.pair_id]) return;
-    out[s.date + '#' + s.time] = s.session_id;
+    const key = s.date + '#' + s.time;
+    (out[key] = out[key] || []).push(s.session_id);
   });
   return out;
+}
+
+/** True when every room at a site is spoken for at that date and time. */
+function slotIsFull_(taken, site, date, time) {
+  return (taken[date + '#' + time] || []).length >= siteRooms_(site);
 }
 
 /**
@@ -2081,12 +2098,20 @@ function bookSession(sessionId, date, time, opts) {
 
     // Is the site free then?
     const taken = takenSlots_(pair.site_id, sessionId);
-    if (taken[date + '#' + time]) {
-      const other = byId_(rows, 'session_id', taken[date + '#' + time]);
-      const otherPair = getPair_(other.pair_id);
-      return { ok: false, message: 'That time at ' + site.name + ' is already taken by ' +
-               getMentor_(otherPair.mentor_id).name + ' and ' +
-               getMentee_(otherPair.mentee_id).name + '. Please pick another.' };
+    if (slotIsFull_(taken, site, date, time)) {
+      const rooms = siteRooms_(site);
+      const others = (taken[date + '#' + time] || []).map(function (id) {
+        const other = byId_(rows, 'session_id', id);
+        const otherPair = other ? getPair_(other.pair_id) : null;
+        return otherPair
+          ? getMentor_(otherPair.mentor_id).name + ' and ' + getMentee_(otherPair.mentee_id).name
+          : '';
+      }).filter(Boolean);
+      return { ok: false, message: rooms === 1
+        ? 'That time at ' + site.name + ' is already taken by ' + others[0] +
+          '. Please pick another.'
+        : 'All ' + rooms + ' rooms at ' + site.name + ' are busy then (' +
+          others.join('; ') + '). Please pick another.' };
     }
 
     const moving = !!(isoOf_(s.date) && (isoOf_(s.date) !== date || s.time !== time));

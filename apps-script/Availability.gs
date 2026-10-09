@@ -80,7 +80,7 @@ function buildMonth(siteId, sessionNo, opts) {
         return {
           time: t,
           picked: !!picked[iso + '|' + t],
-          taken: !!taken[iso + '#' + t]
+          taken: opts.checkTaken ? slotIsFull_(taken, site, iso, t) : false
         };
       });
       if (opts.onlyPicked) times = times.filter(function (t) { return t.picked; });
@@ -275,7 +275,7 @@ function sessionOptions(pairId, sessionNo, exceptSessionId) {
     .map(function (a) {
       return {
         date: a.date, time: a.time, label: prettyDate_(a.date),
-        taken: !!taken[a.date + '#' + a.time]
+        taken: slotIsFull_(taken, site, a.date, a.time)
       };
     });
 }
