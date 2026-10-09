@@ -124,8 +124,10 @@ const HEADERS = {
   // 'internal' hides a site from the mentor intake form without switching it
   // off: we still schedule there, we just place people by hand. Appended
   // last because setCell_ maps fields to columns by position.
+  // staff_email is the one the system sends to; the name and phone are for
+  // the coordinator, who needs a person to call when nobody turns up.
   Sites:   ['site_id','name','address','staff_email','hours','lat','lng','active',
-            'internal','rooms'],
+            'internal','rooms','staff_name','staff_phone'],
   Mentors: ['mentor_id','name','email','phone','grade','school','instruments',
             'skill_level','guardian1_name','guardian1_email','guardian2_name',
             'guardian2_email','travel_from','travel_kind','travel_lat','travel_lng',
@@ -2924,6 +2926,7 @@ function panelData_(token) {
     return {
       id: s.site_id, name: s.name, address: s.address,
       staffEmail: s.staff_email || '', hours: readableHours_(s) || '',
+      staffName: s.staff_name || '', staffPhone: s.staff_phone || '',
       located: !!(s.lat && s.lng),
       mentors: mentors.filter(function (m) { return m.schools.indexOf(s.name) >= 0; }).length,
       students: mentees.filter(function (m) { return m.site === s.name; }).length

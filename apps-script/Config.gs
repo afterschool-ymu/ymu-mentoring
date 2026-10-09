@@ -110,8 +110,10 @@ const HEADERS = {
   // 'internal' hides a site from the mentor intake form without switching it
   // off: we still schedule there, we just place people by hand. Appended
   // last because setCell_ maps fields to columns by position.
+  // staff_email is the one the system sends to; the name and phone are for
+  // the coordinator, who needs a person to call when nobody turns up.
   Sites:   ['site_id','name','address','staff_email','hours','lat','lng','active',
-            'internal','rooms'],
+            'internal','rooms','staff_name','staff_phone'],
   Mentors: ['mentor_id','name','email','phone','grade','school','instruments',
             'skill_level','guardian1_name','guardian1_email','guardian2_name',
             'guardian2_email','travel_from','travel_kind','travel_lat','travel_lng',

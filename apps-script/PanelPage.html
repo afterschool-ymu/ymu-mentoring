@@ -420,7 +420,7 @@ function viewSchools(){
   return '<h2>Schools <span class="faint">' + d.sites.length + '</span></h2>' +
     '<p class="lede">A school with no programme hours never appears in an ambassador\'s form. ' +
     'A school with no staff email means no adult there is told about any session.</p>' +
-    table(['School',{t:'Address',s:1},'Hours','Staff email','Mentors','Students'],
+    table(['School',{t:'Address',s:1},'Hours','Point of contact','Mentors','Students'],
       d.sites.map(function(s){
         return '<tr' + ((!s.hours || !s.staffEmail) ? ' class="blocked"' : '') + '>' +
           '<td class="nm"><b>' + esc(s.name) + '</b>' +
@@ -428,8 +428,13 @@ function viewSchools(){
           '<td class="hide-s faint">' + esc(s.address) + '</td>' +
           '<td>' + (s.hours ? '<span class="muted">' + esc(s.hours) + '</span>'
             : '<span class="pill p-bad">none</span>') + '</td>' +
-          '<td>' + (s.staffEmail ? '<span class="faint">' + esc(s.staffEmail) + '</span>'
-            : '<span class="pill p-bad">missing</span>') + '</td>' +
+          '<td>' + (s.staffEmail
+            ? (s.staffName ? '<b>' + esc(s.staffName) + '</b><br>' : '') +
+              '<span class="faint">' + esc(s.staffEmail) + '</span>' +
+              (s.staffPhone ? '<div class="faint">' + esc(s.staffPhone) + '</div>' : '')
+            : '<span class="pill p-bad">missing</span>' +
+              (s.staffName ? '<div class="faint">' + esc(s.staffName) +
+                             ' \u2014 no email</div>' : '')) + '</td>' +
           '<td class="num">' + (s.mentors || '<span class="faint">0</span>') + '</td>' +
           '<td class="num">' + (s.students || '<span class="faint">0</span>') + '</td></tr>';
       })) + parkedHtml(d.parked);

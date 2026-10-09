@@ -156,6 +156,7 @@ function panelData_(token) {
     return {
       id: s.site_id, name: s.name, address: s.address,
       staffEmail: s.staff_email || '', hours: readableHours_(s) || '',
+      staffName: s.staff_name || '', staffPhone: s.staff_phone || '',
       located: !!(s.lat && s.lng),
       mentors: mentors.filter(function (m) { return m.schools.indexOf(s.name) >= 0; }).length,
       students: mentees.filter(function (m) { return m.site === s.name; }).length
