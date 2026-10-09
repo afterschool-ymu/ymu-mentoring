@@ -805,12 +805,17 @@ function updateSiteTally(){
   var go = document.getElementById('siteGo');
   if(!tally || !go) return;
 
+  // Only worth recommending a range we could actually fill.
+  var prefer = DATA.preferPrefs || 0, most = DATA.maxPrefs || 0;
+  var rec = (prefer > need && most > prefer && DATA.sites.length >= prefer)
+    ? ' — ' + prefer + '–' + most + ' recommended, ' + need + ' minimum'
+    : '';
+
   var short = need - n;
   if(short > 0){
-    tally.textContent = n === 0
-      ? 'Choose ' + need + ' school' + (need === 1 ? '' : 's') + ' to continue.'
-      : short + ' more school' + (short === 1 ? '' : 's') + ' needed — ' +
-        n + ' of ' + need + ' chosen.';
+    tally.textContent = (n === 0
+      ? 'Choose at least ' + need + ' school' + (need === 1 ? '' : 's') + ' to continue'
+      : short + ' more school' + (short === 1 ? '' : 's') + ' needed') + rec + '.';
     tally.style.color = 'var(--warn)';
     go.disabled = true;
   } else {

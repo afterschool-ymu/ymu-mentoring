@@ -102,7 +102,11 @@ const TABS = ['Sites', 'Closures', 'Mentors', 'Availability', 'CycleLog', 'Mente
               'Pairs', 'Sessions', 'Templates', 'Feedback', 'Log'];
 
 const HEADERS = {
-  Sites:   ['site_id','name','address','staff_email','hours','lat','lng','active'],
+  // 'internal' hides a site from the mentor intake form without switching it
+  // off: we still schedule there, we just place people by hand. Appended
+  // last because setCell_ maps fields to columns by position.
+  Sites:   ['site_id','name','address','staff_email','hours','lat','lng','active',
+            'internal'],
   Mentors: ['mentor_id','name','email','phone','grade','school','instruments',
             'skill_level','guardian1_name','guardian1_email','guardian2_name',
             'guardian2_email','travel_from','travel_kind','travel_lat','travel_lng',

@@ -103,11 +103,18 @@ function driveMinutes_(fromLat, fromLng, toLat, toLng) {
  *
  * Returns [{site_id, name, address, hours, miles, driveMins, isOwnSchool, suggested}]
  */
+/** A site we run but never offer on the intake form. */
+function isInternalSite_(site) {
+  return site.internal === true ||
+         String(site.internal || '').trim().toUpperCase() === 'TRUE';
+}
+
 function rankSitesFor(mentorId, opts) {
   opts = opts || {};
   const mentor = getMentor_(mentorId);
   const sites = readTab_('Sites').filter(function (s) {
-    return (s.active === true || s.active === 'TRUE') && s.hours;
+    return (s.active === true || s.active === 'TRUE') && s.hours &&
+           !isInternalSite_(s);
   });
 
   const from = { lat: Number(mentor.travel_lat), lng: Number(mentor.travel_lng) };

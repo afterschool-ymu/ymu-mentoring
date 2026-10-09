@@ -401,7 +401,9 @@ function apiSaveSites(tok, siteIds) {
   siteIds = (siteIds || []).filter(Boolean);
   // Capped at what they were actually offered: a mentor shown one reachable
   // school must not be locked out of their own form by a rule about two.
-  const offered = rankSitesFor(me.mentor.mentor_id).length;
+  const visible = {};
+  rankSitesFor(me.mentor.mentor_id).forEach(function (r) { visible[r.site_id] = true; });
+  const offered = Object.keys(visible).length;
   const need = Math.min(CFG.minSitePrefs, offered) || 1;
   if (siteIds.length < need) {
     return { ok: false, message: need === 1
@@ -412,8 +414,16 @@ function apiSaveSites(tok, siteIds) {
   if (siteIds.length > CFG.maxSitePrefs) {
     return { ok: false, message: 'Please choose no more than ' + CFG.maxSitePrefs + ' schools.' };
   }
-  setCell_('Mentors', me.mentor._row, 'site_prefs', siteIds.join(', '));
-  log_('Intake', me.mentor.name + ' chose ' + siteIds.length + ' schools');
+  // Internal sites never appear on this form, so a mentor re-saving step 2
+  // would silently drop one we placed them at by hand. Carry those over.
+  const held = splitList_(me.mentor.site_prefs).filter(function (id) {
+    return id && !visible[id];
+  });
+  const final = siteIds.filter(function (id) { return visible[id]; }).concat(held);
+
+  setCell_('Mentors', me.mentor._row, 'site_prefs', final.join(', '));
+  log_('Intake', me.mentor.name + ' chose ' + siteIds.length + ' schools' +
+       (held.length ? ' (plus ' + held.length + ' placed by hand)' : ''));
   return { ok: true, message: 'Saved. Now tell us when you are free.', data: mentorData_(tok) };
 }
 

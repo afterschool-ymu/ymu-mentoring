@@ -116,7 +116,11 @@ const TABS = ['Sites', 'Closures', 'Mentors', 'Availability', 'CycleLog', 'Mente
               'Pairs', 'Sessions', 'Templates', 'Feedback', 'Log'];
 
 const HEADERS = {
-  Sites:   ['site_id','name','address','staff_email','hours','lat','lng','active'],
+  // 'internal' hides a site from the mentor intake form without switching it
+  // off: we still schedule there, we just place people by hand. Appended
+  // last because setCell_ maps fields to columns by position.
+  Sites:   ['site_id','name','address','staff_email','hours','lat','lng','active',
+            'internal'],
   Mentors: ['mentor_id','name','email','phone','grade','school','instruments',
             'skill_level','guardian1_name','guardian1_email','guardian2_name',
             'guardian2_email','travel_from','travel_kind','travel_lat','travel_lng',
@@ -1230,11 +1234,18 @@ function driveMinutes_(fromLat, fromLng, toLat, toLng) {
  *
  * Returns [{site_id, name, address, hours, miles, driveMins, isOwnSchool, suggested}]
  */
+/** A site we run but never offer on the intake form. */
+function isInternalSite_(site) {
+  return site.internal === true ||
+         String(site.internal || '').trim().toUpperCase() === 'TRUE';
+}
+
 function rankSitesFor(mentorId, opts) {
   opts = opts || {};
   const mentor = getMentor_(mentorId);
   const sites = readTab_('Sites').filter(function (s) {
-    return (s.active === true || s.active === 'TRUE') && s.hours;
+    return (s.active === true || s.active === 'TRUE') && s.hours &&
+           !isInternalSite_(s);
   });
 
   const from = { lat: Number(mentor.travel_lat), lng: Number(mentor.travel_lng) };
@@ -4947,7 +4958,9 @@ function apiSaveSites(tok, siteIds) {
   siteIds = (siteIds || []).filter(Boolean);
   // Capped at what they were actually offered: a mentor shown one reachable
   // school must not be locked out of their own form by a rule about two.
-  const offered = rankSitesFor(me.mentor.mentor_id).length;
+  const visible = {};
+  rankSitesFor(me.mentor.mentor_id).forEach(function (r) { visible[r.site_id] = true; });
+  const offered = Object.keys(visible).length;
   const need = Math.min(CFG.minSitePrefs, offered) || 1;
   if (siteIds.length < need) {
     return { ok: false, message: need === 1
@@ -4958,8 +4971,16 @@ function apiSaveSites(tok, siteIds) {
   if (siteIds.length > CFG.maxSitePrefs) {
     return { ok: false, message: 'Please choose no more than ' + CFG.maxSitePrefs + ' schools.' };
   }
-  setCell_('Mentors', me.mentor._row, 'site_prefs', siteIds.join(', '));
-  log_('Intake', me.mentor.name + ' chose ' + siteIds.length + ' schools');
+  // Internal sites never appear on this form, so a mentor re-saving step 2
+  // would silently drop one we placed them at by hand. Carry those over.
+  const held = splitList_(me.mentor.site_prefs).filter(function (id) {
+    return id && !visible[id];
+  });
+  const final = siteIds.filter(function (id) { return visible[id]; }).concat(held);
+
+  setCell_('Mentors', me.mentor._row, 'site_prefs', final.join(', '));
+  log_('Intake', me.mentor.name + ' chose ' + siteIds.length + ' schools' +
+       (held.length ? ' (plus ' + held.length + ' placed by hand)' : ''));
   return { ok: true, message: 'Saved. Now tell us when you are free.', data: mentorData_(tok) };
 }
 
