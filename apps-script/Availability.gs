@@ -229,10 +229,14 @@ function intakeStatus(mentorId, cycle) {
     });
   });
 
-  // Only the cycle in front of them decides whether they are ready.
-  status.complete = status.hasAddress && status.hasSites &&
-    status.perSite.length > 0 &&
-    status.perSite.every(function (p) { return p.ok; });
+  // Only the cycle in front of them decides whether they are ready, and one
+  // school they can genuinely make is enough. Requiring every school on the
+  // list would punish the ambassador who offers three: a school they listed
+  // but cannot fit this cycle would block the whole form, which is exactly
+  // what happened when we started asking for two.
+  status.ready = status.perSite.filter(function (p) { return p.ok; });
+  status.empty = status.perSite.filter(function (p) { return !p.ok; });
+  status.complete = status.hasAddress && status.hasSites && status.ready.length > 0;
   return status;
 }
 

@@ -211,9 +211,17 @@ function render(){
       '<h1>Thanks, ' + esc(d.firstName) + '</h1>' +
       '<div class="card" style="margin-top:14px"><h2>You are all set for now</h2>' +
       '<p>We have your availability for ' + d.prefs.map(esc).join(', ') + '.</p>' +
+      ((d.empty && d.empty.length)
+        ? '<p class="sub">You have not given us any times at ' +
+          d.empty.map(esc).join(' or ') + ' yet, so we cannot match you there.</p>'
+        : '') +
       '<p>Once we have matched you with a student, your seven session dates will appear ' +
       'here for you to book.</p>' +
-      '<p class="sub">Questions: <a href="mailto:' + esc(d.contact) + '">' + esc(d.contact) + '</a></p>' +
+      '<div style="margin-top:14px"><button onclick="editSchools()">' +
+        'Add or change schools</button> ' +
+        '<span class="spin" id="editSpin"></span></div>' +
+      '<p class="sub" style="margin-top:12px">Questions: ' +
+        '<a href="mailto:' + esc(d.contact) + '">' + esc(d.contact) + '</a></p>' +
       '</div>';
     return;
   }
@@ -882,6 +890,23 @@ function finishIntake(){
 
 function backToSites(){ CUR = {site:null, month:1, day:null, grid:null, counts:[]};
                         DATA.step = 2; render(); }
+
+/* The way back in once the form is behind you. The waiting screen is
+   otherwise terminal, and the browser back button cannot help because
+   nothing ever navigated. */
+function editSchools(){
+  busy('editSpin', true, 'Opening\u2026');
+  google.script.run
+    .withSuccessHandler(function(r){
+      busy('editSpin', false);
+      if(r.ok && r.data){
+        CUR = {site:null, month:1, day:null, grid:null, counts:[]};
+        DATA = r.data; render();
+      } else toast(r.message || 'Could not open that.');
+    })
+    .withFailureHandler(function(e){ busy('editSpin', false); toast('Error: ' + e.message); })
+    .apiEditSchools(TOKEN);
+}
 
 /* ---- actions ---- */
 

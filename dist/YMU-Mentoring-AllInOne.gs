@@ -2040,10 +2040,14 @@ function intakeStatus(mentorId, cycle) {
     });
   });
 
-  // Only the cycle in front of them decides whether they are ready.
-  status.complete = status.hasAddress && status.hasSites &&
-    status.perSite.length > 0 &&
-    status.perSite.every(function (p) { return p.ok; });
+  // Only the cycle in front of them decides whether they are ready, and one
+  // school they can genuinely make is enough. Requiring every school on the
+  // list would punish the ambassador who offers three: a school they listed
+  // but cannot fit this cycle would block the whole form, which is exactly
+  // what happened when we started asking for two.
+  status.ready = status.perSite.filter(function (p) { return p.ok; });
+  status.empty = status.perSite.filter(function (p) { return !p.ok; });
+  status.complete = status.hasAddress && status.hasSites && status.ready.length > 0;
   return status;
 }
 
@@ -4804,7 +4808,8 @@ function mentorData_(token) {
   if (!pair) {
     return { mode: 'waiting', name: mentor.name, firstName: String(mentor.name).split(' ')[0],
              contact: CFG.coordinatorEmail,
-             prefs: intake.perSite.map(function (p) { return p.name; }) };
+             prefs: (intake.ready || []).map(function (p) { return p.name; }).filter(Boolean),
+             empty: (intake.empty || []).map(function (p) { return p.name; }).filter(Boolean) };
   }
 
   const site = getSite_(pair.site_id);
@@ -5089,14 +5094,34 @@ function apiFinishIntake(tok) {
   if (!st.complete) {
     const gaps = [];
     st.perSite.forEach(function (p) { p.problems.forEach(function (x) { gaps.push(x); }); });
-    return { ok: false, message: gaps.join(' ') || 'Still some months to fill in.' };
+    return { ok: false, message: gaps.join(' ') ||
+      'Please give at least ' + CFG.minSlotsPerMonth + ' times a month at one of your schools.' };
   }
   if (!me.mentor.intake_done) {
     setCell_('Mentors', me.mentor._row, 'intake_done', todayIso_());
     notifyIntakeComplete_(me.mentor, st);
   }
-  return { ok: true, message: 'All done — thank you. We will let you know who you are paired with.',
-           data: mentorData_(tok) };
+  const thin = (st.empty || []).map(function (p) { return p.name; }).filter(Boolean);
+  return { ok: true, data: mentorData_(tok),
+    message: thin.length
+      ? 'Saved — thank you. You have no times yet at ' + thin.join(' or ') +
+        ', so we can only match you at your other school for now. You can add ' +
+        'them whenever you like.'
+      : 'All done — thank you. We will let you know who you are paired with.' };
+}
+
+/**
+ * Reopens the form for an ambassador who already finished it. Without this
+ * the "all set for now" screen is a dead end: nothing on it leads anywhere,
+ * and the browser back button does nothing because the page never navigated.
+ */
+function apiEditSchools(tok) {
+  const me = whoAmI_(tok);
+  if (!me.ok) return { ok: false, message: me.message };
+  const d = intakeData_(me.mentor, intakeStatus(me.mentor.mentor_id));
+  d.step = 2;
+  d.returning = true;
+  return { ok: true, data: d };
 }
 
 /** Step 1 — geocode where they'll be travelling from. */
