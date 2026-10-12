@@ -29,3 +29,20 @@ mkdir -p dist
 } > "$OUT"
 
 echo "wrote $OUT ($(wc -l < "$OUT" | tr -d ' ') lines)"
+
+# The three HTML pages are SEPARATE files in the Apps Script project. They are
+# not part of the bundle and never can be, so copy them here too: whoever is
+# pasting should be looking at one folder holding everything that needs to go
+# across, not remembering which files the bundle leaves out.
+for f in MentorPage MenteePage PanelPage; do
+  cp "apps-script/$f.html" "dist/$f.html"
+  echo "wrote dist/$f.html"
+done
+
+echo ""
+echo "Paste into Apps Script:"
+echo "  dist/YMU-Mentoring-AllInOne.gs  -> script file  Code"
+echo "  dist/MentorPage.html            -> HTML file    MentorPage"
+echo "  dist/MenteePage.html            -> HTML file    MenteePage"
+echo "  dist/PanelPage.html             -> HTML file    PanelPage"
+echo "  private/Roster.gs               -> script file  Roster   (never in git)"
