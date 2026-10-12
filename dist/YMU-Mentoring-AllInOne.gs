@@ -1384,6 +1384,8 @@ function rankSitesFor(mentorId, opts) {
 
   const from = { lat: Number(mentor.travel_lat), lng: Number(mentor.travel_lng) };
   const haveOrigin = !!(from.lat && from.lng);
+  const byId = {};
+  sites.forEach(function (st) { byId[st.site_id] = st; });
 
   const ranked = sites.map(function (s) {
     const sameSchool = !!(mentor.school && s.name &&
@@ -1414,7 +1416,7 @@ function rankSitesFor(mentorId, opts) {
   if (haveOrigin && opts.withDriveTimes !== false) {
     ranked.slice(0, CFG.suggestCount + 2).forEach(function (r) {
       if (r.isOwnSchool) { r.driveMins = 0; return; }
-      const site = getSite_(r.site_id);
+      const site = byId[r.site_id] || {};   // already read; getSite_ re-reads the tab
       if (!site.lat || !site.lng) return;
       r.driveMins = driveMinutes_(from.lat, from.lng, Number(site.lat), Number(site.lng));
     });
@@ -4874,7 +4876,8 @@ function mentorData_(token) {
    ==================================================================== */
 
 /** The state of the intake form for one mentor. */
-function intakeData_(mentor, intake) {
+function intakeData_(mentor, intake, opts) {
+  opts = opts || {};
   const today = todayIso_();
   const cyc = activeCycle_();
   const due = cyc ? cyc.dueBy : CFG.intakeDeadline;
@@ -4905,7 +4908,9 @@ function intakeData_(mentor, intake) {
   if (!intake.hasAddress) { d.step = 1; return d; }
 
   // Step 2 — the schools, nearest first.
-  d.step = intake.hasSites ? 3 : 2;
+  // schoolsOnly stops here: everything below builds the step 3 calendar, which
+  // is the slow part and is wasted when all they want is the school list.
+  d.step = (intake.hasSites && !opts.schoolsOnly) ? 3 : 2;
   d.sites = rankSitesFor(mentor.mentor_id, { withDriveTimes: true }).map(function (r) {
     return {
       site_id: r.site_id, name: r.name, address: r.address,
@@ -4917,7 +4922,7 @@ function intakeData_(mentor, intake) {
 
   // Step 3 — a real calendar per school, but only for the cycle in front of
   // them. Nobody is asked in September what they are doing in April.
-  if (intake.hasSites) {
+  if (intake.hasSites && !opts.schoolsOnly) {
     const cyc = activeCycle_();
     d.minPerMonth = CFG.minSlotsPerMonth;
     d.encourage = CFG.encourageSlots;
@@ -4931,7 +4936,7 @@ function intakeData_(mentor, intake) {
     // reaches the page as a nameless school whose calendar never loads, and
     // if it happens to be first, nothing else loads either.
     const liveSites = {};
-    readTab_('Sites').forEach(function (st) { liveSites[st.site_id] = true; });
+    readTab_('Sites').forEach(function (st) { liveSites[st.site_id] = st; });
     const gone = intake.prefs.filter(function (id) { return !liveSites[id]; });
     if (gone.length) {
       log_('Intake', mentor.name + ' has ' + gone.length +
@@ -4940,7 +4945,7 @@ function intakeData_(mentor, intake) {
 
     d.chosen = intake.prefs.filter(function (id) { return liveSites[id]; })
       .map(function (siteId) {
-      const site = getSite_(siteId);
+      const site = liveSites[siteId];        // already read; getSite_ re-reads the tab
       const st = intake.perSite.filter(function (p) { return p.site_id === siteId; })[0] || {};
       return {
         site_id: siteId, name: site.name, hours: readableHours_(site),
@@ -5118,8 +5123,8 @@ function apiFinishIntake(tok) {
 function apiEditSchools(tok) {
   const me = whoAmI_(tok);
   if (!me.ok) return { ok: false, message: me.message };
-  const d = intakeData_(me.mentor, intakeStatus(me.mentor.mentor_id));
-  d.step = 2;
+  const d = intakeData_(me.mentor, intakeStatus(me.mentor.mentor_id),
+                        { schoolsOnly: true });
   d.returning = true;
   return { ok: true, data: d };
 }

@@ -895,7 +895,9 @@ function backToSites(){ CUR = {site:null, month:1, day:null, grid:null, counts:[
    otherwise terminal, and the browser back button cannot help because
    nothing ever navigated. */
 function editSchools(){
-  busy('editSpin', true, 'Opening\u2026');
+  // Working out drive times to every school takes a few seconds, and a bare
+  // spinner for that long reads as a hung page.
+  busy('editSpin', true, 'Finding your schools\u2026 this takes a few seconds');
   google.script.run
     .withSuccessHandler(function(r){
       busy('editSpin', false);

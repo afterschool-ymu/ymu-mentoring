@@ -119,6 +119,8 @@ function rankSitesFor(mentorId, opts) {
 
   const from = { lat: Number(mentor.travel_lat), lng: Number(mentor.travel_lng) };
   const haveOrigin = !!(from.lat && from.lng);
+  const byId = {};
+  sites.forEach(function (st) { byId[st.site_id] = st; });
 
   const ranked = sites.map(function (s) {
     const sameSchool = !!(mentor.school && s.name &&
@@ -149,7 +151,7 @@ function rankSitesFor(mentorId, opts) {
   if (haveOrigin && opts.withDriveTimes !== false) {
     ranked.slice(0, CFG.suggestCount + 2).forEach(function (r) {
       if (r.isOwnSchool) { r.driveMins = 0; return; }
-      const site = getSite_(r.site_id);
+      const site = byId[r.site_id] || {};   // already read; getSite_ re-reads the tab
       if (!site.lat || !site.lng) return;
       r.driveMins = driveMinutes_(from.lat, from.lng, Number(site.lat), Number(site.lng));
     });
