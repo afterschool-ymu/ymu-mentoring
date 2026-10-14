@@ -217,7 +217,12 @@ function render(){
         : '') +
       '<p>Once we have matched you with a student, your seven session dates will appear ' +
       'here for you to book.</p>' +
-      '<div style="margin-top:14px"><button onclick="editSchools()">' +
+      '<div style="margin-top:14px">' +
+        ((d.empty && d.empty.length)
+          ? '<button onclick="editSchools(\'times\')">Add my times for ' +
+            esc(d.empty[0]) + (d.empty.length > 1 ? ' and ' + (d.empty.length - 1) + ' more' : '') +
+            '</button> ' : '') +
+        '<button class="ghost" onclick="editSchools()">' +
         'Add or change schools</button> ' +
         '<span class="spin" id="editSpin"></span></div>' +
       '<p class="sub" style="margin-top:12px">Questions: ' +
@@ -894,10 +899,12 @@ function backToSites(){ CUR = {site:null, month:1, day:null, grid:null, counts:[
 /* The way back in once the form is behind you. The waiting screen is
    otherwise terminal, and the browser back button cannot help because
    nothing ever navigated. */
-function editSchools(){
+function editSchools(which){
   // Working out drive times to every school takes a few seconds, and a bare
   // spinner for that long reads as a hung page.
-  busy('editSpin', true, 'Finding your schools\u2026 this takes a few seconds');
+  busy('editSpin', true, which === 'times'
+    ? 'Opening your calendar\u2026 this takes a few seconds'
+    : 'Finding your schools\u2026 this takes a few seconds');
   google.script.run
     .withSuccessHandler(function(r){
       busy('editSpin', false);
@@ -907,7 +914,7 @@ function editSchools(){
       } else toast(r.message || 'Could not open that.');
     })
     .withFailureHandler(function(e){ busy('editSpin', false); toast('Error: ' + e.message); })
-    .apiEditSchools(TOKEN);
+    .apiEditSchools(TOKEN, which || '');
 }
 
 /* ---- actions ---- */

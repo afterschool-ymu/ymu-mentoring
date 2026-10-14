@@ -5138,11 +5138,15 @@ function apiFinishIntake(tok) {
  * the "all set for now" screen is a dead end: nothing on it leads anywhere,
  * and the browser back button does nothing because the page never navigated.
  */
-function apiEditSchools(tok) {
+function apiEditSchools(tok, which) {
   const me = whoAmI_(tok);
   if (!me.ok) return { ok: false, message: me.message };
+  // 'times' goes straight to the calendar, for someone who only wants to fill
+  // in the school they already added. Anything else shows the school list,
+  // and skips building a calendar nobody is about to look at.
+  const wantsTimes = which === 'times';
   const d = intakeData_(me.mentor, intakeStatus(me.mentor.mentor_id),
-                        { schoolsOnly: true });
+                        wantsTimes ? {} : { schoolsOnly: true });
   d.returning = true;
   return { ok: true, data: d };
 }
@@ -5197,7 +5201,13 @@ function apiSaveSites(tok, siteIds) {
   setCell_('Mentors', me.mentor._row, 'site_prefs', final.join(', '));
   log_('Intake', me.mentor.name + ' chose ' + siteIds.length + ' schools' +
        (held.length ? ' (plus ' + held.length + ' placed by hand)' : ''));
-  return { ok: true, message: 'Saved. Now tell us when you are free.', data: mentorData_(tok) };
+  // Always land on the calendar. mentorData_ would send anyone already
+  // complete at one school straight back to the waiting screen, which is a
+  // trap: they have just added schools precisely in order to give times for
+  // them, and the message above promises exactly that.
+  const fresh = getMentor_(me.mentor.mentor_id);
+  return { ok: true, message: 'Saved. Now tell us when you are free.',
+           data: intakeData_(fresh, intakeStatus(fresh.mentor_id)) };
 }
 
 function notifyIntakeComplete_(mentor, status) {
