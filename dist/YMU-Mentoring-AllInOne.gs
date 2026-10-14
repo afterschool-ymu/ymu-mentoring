@@ -1153,13 +1153,26 @@ function emailMenteeLinks() {
     notify_('Set publicStudentUrl in Config.gs first — the links are built from it.');
     return 0;
   }
-  let sent = 0, skipped = [];
+  let sent = 0, skipped = [], noStudentAddress = [];
   readTab_('Mentees').forEach(function (m) {
     if (m.active !== true && m.active !== 'TRUE') return;
     if (!m.access_token) { skipped.push(m.name + ' (no link yet)'); return; }
-    const to = [m.guardian_email, m.student_email]
-      .filter(function (e) { return e && /@/.test(e); });
-    if (!to.length) { skipped.push(m.name + ' (no email)'); return; }
+    // The student is the one who picks the times, so the link is addressed to
+    // them and the guardian is copied. A student with no address of their own
+    // falls back to the guardian rather than being skipped, and the guardian
+    // is never copied on their own message twice.
+    const clean = function (e) {
+      e = String(e || '').trim();
+      return (e && /@/.test(e)) ? e : '';
+    };
+    const student = clean(m.student_email);
+    const guardian = clean(m.guardian_email);
+    const to = student || guardian;
+    if (!to) { skipped.push(m.name + ' (no email)'); return; }
+
+    const copies = [CFG.coordinatorEmail];
+    if (guardian && guardian.toLowerCase() !== to.toLowerCase()) copies.push(guardian);
+    if (!student) noStudentAddress.push(m.name);
 
     const pair = readTab_('Pairs').filter(function (p) {
       return p.mentee_id === m.mentee_id && (p.approved === true || p.approved === 'TRUE');
@@ -1167,7 +1180,7 @@ function emailMenteeLinks() {
     const mentorName = pair ? getMentor_(pair.mentor_id).name : '';
 
     MailApp.sendEmail({
-      to: to.join(','), cc: CFG.coordinatorEmail,
+      to: to, cc: copies.join(','),
       subject: 'Pick your music mentoring times, ' + String(m.name).split(' ')[0],
       name: CFG.coordinatorName,
       htmlBody: shell_(
@@ -1185,7 +1198,12 @@ function emailMenteeLinks() {
     });
     sent++;
   });
-  notify_(sent + ' student links emailed.' +
+  notify_(sent + ' student links emailed \u2014 to the student, with the ' +
+    'parent and you copied.' +
+    (noStudentAddress.length
+      ? '\n\nNo student address on file, so these went to the parent instead:\n\u2022 ' +
+        noStudentAddress.join('\n\u2022 ')
+      : '') +
     (skipped.length ? '\n\nSkipped: ' + skipped.join(', ') : ''));
   return sent;
 }
