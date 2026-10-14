@@ -167,8 +167,7 @@ function applyPattern_(mentorId, siteId, cycle, pattern) {
     for (let d = 1; d <= last; d++) {
       const iso = m.prefix + (d < 10 ? '0' : '') + d;
       const wd = weekdayIndex_(iso);
-      if (wd > 4) continue;
-      const legal = openSlotsOnDate_(site, iso);
+      const legal = openSlotsOnDate_(site, iso);   // the site's hours decide the day
       if (!legal.length) continue;
       const dayName = CFG.days[wd];
       pattern.forEach(function (p) {

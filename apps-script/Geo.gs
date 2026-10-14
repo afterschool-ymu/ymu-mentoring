@@ -184,7 +184,8 @@ function readableHours_(site) {
   return CFG.days.filter(function (d) { return h[d]; }).map(function (d) {
     const fmt = function (x) {
       const hh = Math.floor(x), mm = Math.round((x - hh) * 60);
-      return (hh > 12 ? hh - 12 : hh) + ':' + (mm < 10 ? '0' : '') + mm;
+      return (hh > 12 ? hh - 12 : (hh === 0 ? 12 : hh)) +
+             ':' + (mm < 10 ? '0' : '') + mm + (hh >= 12 ? 'pm' : 'am');
     };
     return d + ' ' + h[d].map(function (w) {
       return fmt(w[0]) + '–' + fmt(w[1]);

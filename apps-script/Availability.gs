@@ -24,10 +24,12 @@ function availabilityFor(mentorId, siteId) {
 
 /** The hours a school could run on one specific date — [] if shut. */
 function openSlotsOnDate_(site, iso) {
+  // No weekday test here: the site's own hours decide which days it opens.
+  // A hard Mon-Fri rule meant Wynwood rendered a Sunday column with every
+  // cell empty, so no Sunday was ever bookable.
   const wd = weekdayIndex_(iso);
-  if (wd > 4) return [];                              // weekends
   if (closureReason_(iso, site.site_id)) return [];   // district or school closure
-  return openBlocksOn_(site, wd).map(function (b) { return b + ' PM'; });
+  return openBlocksOn_(site, wd).map(blockLabel_);
 }
 
 /**

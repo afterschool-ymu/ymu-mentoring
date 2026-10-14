@@ -86,8 +86,7 @@ function bookSession(sessionId, date, time, opts) {
 
     // Is this date+time actually allowed at this school?
     const site = getSite_(pair.site_id);
-    const allowed = openBlocksOn_(site, weekdayIndex_(date))
-      .map(function (b) { return b + ' PM'; });
+    const allowed = openBlocksOn_(site, weekdayIndex_(date)).map(blockLabel_);
     if (allowed.indexOf(time) < 0) {
       return { ok: false, message: prettyDate_(date) + ' at ' + time +
                ' is outside ' + site.name + "'s afterschool hours." };

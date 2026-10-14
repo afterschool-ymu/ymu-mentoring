@@ -40,7 +40,12 @@ const CFG = {
   // finishes at 12:30 can mentor at 1:00 and still be gone by 2:00. Every
   // site filters these against its own hours, so a weekday site that opens
   // at 2:00 never sees them.
-  blocks: ['12:30','1:00','1:30',
+  // A bare label means PM, which is what an afterschool programme always
+  // meant. Mornings have to say so. Last start is 5:30, so the latest session
+  // ends at 6:30. Each site filters these against its own hours, so a weekday
+  // school that opens at 2:00 never sees the morning ones.
+  blocks: ['9:00 AM','9:30 AM','10:00 AM','10:30 AM','11:00 AM','11:30 AM',
+           '12:00','12:30','1:00','1:30',
            '2:00','2:30','3:00','3:30','4:00','4:30','5:00','5:30'],
   maxReschedules: 2,             // past this, the manager is alerted
   roomsPerSite: 1,              // one pair per site per time slot
@@ -260,6 +265,16 @@ function prettyDate_(iso) {
 }
 
 /** "3:30 PM" -> {h:15, min:30} */
+/**
+ * How a block is written down. CFG.blocks leaves the PM off, because that was
+ * always the only possibility; a morning block carries its own AM and must not
+ * have PM stapled onto the end of it.
+ */
+function blockLabel_(b) {
+  b = String(b).trim();
+  return /\b(AM|PM)\b/i.test(b) ? b : b + ' PM';
+}
+
 function parseClock_(txt) {
   const m = String(txt).trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
   if (!m) return null;
@@ -296,7 +311,9 @@ function parseHours_(text) {
   String(text).split(/[;\n]+/).forEach(function (seg) {
     seg = seg.trim();
     if (!seg) return;
-    const m = seg.match(/^([A-Za-z]{3})\s*(?:-\s*([A-Za-z]{3}))?\s+(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})$/);
+    // Times may carry AM or PM. Without one, PM is assumed, so every hours
+    // string written before mornings existed still means what it did.
+    const m = seg.match(/^([A-Za-z]{3})\s*(?:-\s*([A-Za-z]{3}))?\s+(\d{1,2}:\d{2}\s*(?:AM|PM)?)\s*-\s*(\d{1,2}:\d{2}\s*(?:AM|PM)?)$/i);
     if (!m) { log_('Could not read hours segment', seg); return; }
     const from = CFG.days.indexOf(titleCase_(m[1]));
     const to = m[2] ? CFG.days.indexOf(titleCase_(m[2])) : from;
@@ -1467,7 +1484,8 @@ function readableHours_(site) {
   return CFG.days.filter(function (d) { return h[d]; }).map(function (d) {
     const fmt = function (x) {
       const hh = Math.floor(x), mm = Math.round((x - hh) * 60);
-      return (hh > 12 ? hh - 12 : hh) + ':' + (mm < 10 ? '0' : '') + mm;
+      return (hh > 12 ? hh - 12 : (hh === 0 ? 12 : hh)) +
+             ':' + (mm < 10 ? '0' : '') + mm + (hh >= 12 ? 'pm' : 'am');
     };
     return d + ' ' + h[d].map(function (w) {
       return fmt(w[0]) + '–' + fmt(w[1]);
@@ -1769,8 +1787,7 @@ function applyPattern_(mentorId, siteId, cycle, pattern) {
     for (let d = 1; d <= last; d++) {
       const iso = m.prefix + (d < 10 ? '0' : '') + d;
       const wd = weekdayIndex_(iso);
-      if (wd > 4) continue;
-      const legal = openSlotsOnDate_(site, iso);
+      const legal = openSlotsOnDate_(site, iso);   // the site's hours decide the day
       if (!legal.length) continue;
       const dayName = CFG.days[wd];
       pattern.forEach(function (p) {
@@ -1855,10 +1872,12 @@ function availabilityFor(mentorId, siteId) {
 
 /** The hours a school could run on one specific date — [] if shut. */
 function openSlotsOnDate_(site, iso) {
+  // No weekday test here: the site's own hours decide which days it opens.
+  // A hard Mon-Fri rule meant Wynwood rendered a Sunday column with every
+  // cell empty, so no Sunday was ever bookable.
   const wd = weekdayIndex_(iso);
-  if (wd > 4) return [];                              // weekends
   if (closureReason_(iso, site.site_id)) return [];   // district or school closure
-  return openBlocksOn_(site, wd).map(function (b) { return b + ' PM'; });
+  return openBlocksOn_(site, wd).map(blockLabel_);
 }
 
 /**
@@ -2207,8 +2226,7 @@ function bookSession(sessionId, date, time, opts) {
 
     // Is this date+time actually allowed at this school?
     const site = getSite_(pair.site_id);
-    const allowed = openBlocksOn_(site, weekdayIndex_(date))
-      .map(function (b) { return b + ' PM'; });
+    const allowed = openBlocksOn_(site, weekdayIndex_(date)).map(blockLabel_);
     if (allowed.indexOf(time) < 0) {
       return { ok: false, message: prettyDate_(date) + ' at ' + time +
                ' is outside ' + site.name + "'s afterschool hours." };
