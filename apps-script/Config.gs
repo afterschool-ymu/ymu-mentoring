@@ -130,9 +130,12 @@ const HEADERS = {
   Availability: ['mentor_id','site_id','date','time','added'],
   // Days no session may be scheduled. Blank site_id = district-wide.
   Closures: ['date','reason','site_id','source'],
+  // link_sent is appended last: setCell_ maps by position, and a family
+  // emailed twice, or emailed again every time a new student is added, is
+  // exactly the kind of mistake this column exists to stop.
   Mentees: ['mentee_id','name','student_email','guardian_email','guardian_phone',
             'instrument','skill_level','site_id','access_token','usual_day',
-            'usual_time','active'],
+            'usual_time','active','link_sent'],
   // One row per mentor per cycle: were they asked, did they update, did we carry it.
   CycleLog: ['mentor_id','cycle_id','prompted_on','updated_on','carried_on','short_warned_on'],
   // Every automated message, editable by the manager.
@@ -161,6 +164,22 @@ function sheet_(name) {
   const s = ss_().getSheetByName(name);
   if (!s) throw new Error('Missing tab "' + name + '". Run setupWorkbook first.');
   return s;
+}
+
+/**
+ * Writes a header that HEADERS knows about but the sheet does not have yet,
+ * in the column setCell_ will use for it. Refuses if that cell already holds
+ * something else, rather than relabel a column of real data.
+ */
+function ensureHeader_(tabName, field) {
+  const col = HEADERS[tabName].indexOf(field) + 1;
+  if (col < 1) throw new Error('No column "' + field + '" in HEADERS.' + tabName);
+  const cell = sheet_(tabName).getRange(1, col);
+  const now = String(cell.getValue() || '').trim();
+  if (now === field) return;
+  if (now) throw new Error('Column ' + col + ' of ' + tabName + ' is headed "' + now +
+                           '", expected "' + field + '". Not overwriting it.');
+  cell.setValue(field);
 }
 
 /** Reads a whole tab as an array of plain objects keyed by header name. */

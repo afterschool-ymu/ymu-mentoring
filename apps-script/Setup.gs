@@ -730,36 +730,107 @@ function installTriggers() {
 }
 
 /** Emails each student (and their guardian) their private booking link. */
+/**
+ * Sends each ready student their booking link, once.
+ *
+ * "Ready" is strict on purpose. A link opens a page; what is on that page
+ * depends on the pair, the sessions and the mentor's times, and a family that
+ * gets "pick your times" and finds nothing to pick will not try twice. So a
+ * student is only sent their link when they are paired, the pair's sessions
+ * exist, and their mentor has offered at least one time still to come. Every
+ * one left out is named, with the reason, before anything is sent.
+ *
+ * The first family to book triggers a real calendar invitation, so the
+ * calendar is checked here too, rather than in front of that family.
+ */
 function emailMenteeLinks() {
+  const ui = SpreadsheetApp.getUi();
   if (!CFG.publicStudentUrl && !CFG.webAppUrl) {
-    notify_('Set publicStudentUrl in Config.gs first — the links are built from it.');
+    notify_('Set publicStudentUrl in Config.gs first \u2014 the links are built from it.');
     return 0;
   }
-  let sent = 0, skipped = [], noStudentAddress = [];
+
+  try {
+    Calendar.Calendars.get(calendarId_());
+  } catch (err) {
+    notify_('Nothing sent.\n\nThe calendar cannot be reached, so the first family to pick ' +
+      'a time would see an error instead of a booking:\n\n' + err.message +
+      '\n\nIn the Apps Script editor: Services (+) \u2192 Google Calendar API \u2192 Add. ' +
+      'Then run this again.');
+    return 0;
+  }
+
+  ensureHeader_('Mentees', 'link_sent');
+
+  const today = todayIso_();
+  const on = function (r) { return r.active === true || r.active === 'TRUE'; };
+  const pairOf = {};
+  readTab_('Pairs').forEach(function (p) {
+    if (p.approved === true || p.approved === 'TRUE') pairOf[p.mentee_id] = p;
+  });
+  const hasSessions = {};
+  readTab_('Sessions').forEach(function (s) { hasSessions[s.pair_id] = true; });
+  const futureTimes = {};
+  readTab_('Availability').forEach(function (a) {
+    if (isoOf_(a.date) > today) futureTimes[a.mentor_id + '|' + a.site_id] = true;
+  });
+  const clean = function (e) {
+    e = String(e || '').trim();
+    return (e && /@/.test(e)) ? e : '';
+  };
+
+  const ready = [], sentBefore = [], unpaired = [], noSessions = [], noTimes = [],
+        noLink = [], noEmail = [];
   readTab_('Mentees').forEach(function (m) {
-    if (m.active !== true && m.active !== 'TRUE') return;
-    if (!m.access_token) { skipped.push(m.name + ' (no link yet)'); return; }
-    // The student is the one who picks the times, so the link is addressed to
-    // them and the guardian is copied. A student with no address of their own
-    // falls back to the guardian rather than being skipped, and the guardian
-    // is never copied on their own message twice.
-    const clean = function (e) {
-      e = String(e || '').trim();
-      return (e && /@/.test(e)) ? e : '';
-    };
+    if (!String(m.name || '').trim() || !on(m)) return;
+    if (String(m.link_sent || '').trim()) { sentBefore.push(m.name); return; }
+    const p = pairOf[m.mentee_id];
+    if (!p) { unpaired.push(m.name); return; }
+    if (!m.access_token) { noLink.push(m.name); return; }
+    if (!clean(m.student_email) && !clean(m.guardian_email)) { noEmail.push(m.name); return; }
+    if (!hasSessions[p.pair_id]) { noSessions.push(m.name); return; }
+    if (!futureTimes[p.mentor_id + '|' + p.site_id]) {
+      noTimes.push(m.name + ' (' + getMentor_(p.mentor_id).name + ')');
+      return;
+    }
+    ready.push(m);
+  });
+
+  const list = function (title, arr) {
+    return arr.length ? '\n\n' + title + ' (' + arr.length + '):\n\u2022 ' + arr.join('\n\u2022 ') : '';
+  };
+  const held =
+    list('Not paired yet', unpaired) +
+    list('No sessions yet \u2014 run "Create missing sessions"', noSessions) +
+    list('Their mentor has offered no times still to come', noTimes) +
+    list('No link yet \u2014 run "Create student booking links"', noLink) +
+    list('No email address', noEmail) +
+    list('Already sent', sentBefore);
+
+  if (!ready.length) {
+    notify_('Nobody is ready to be sent a link.' + held);
+    return 0;
+  }
+
+  const answer = ui.alert('Send ' + ready.length + ' booking link' + (ready.length === 1 ? '' : 's') + '?',
+    'Each goes to the student, with their parent and you copied:\n\u2022 ' +
+    ready.map(function (m) { return m.name; }).join('\n\u2022 ') +
+    held +
+    '\n\nOnce a family picks a time, a calendar invitation goes straight out to the ' +
+    'mentor, their parents, the student\'s parent and the school contact.',
+    ui.ButtonSet.YES_NO);
+  if (answer !== ui.Button.YES) { notify_('Nothing sent.'); return 0; }
+
+  let sent = 0;
+  const noStudentAddress = [];
+  ready.forEach(function (m) {
     const student = clean(m.student_email);
     const guardian = clean(m.guardian_email);
     const to = student || guardian;
-    if (!to) { skipped.push(m.name + ' (no email)'); return; }
-
     const copies = [CFG.coordinatorEmail];
     if (guardian && guardian.toLowerCase() !== to.toLowerCase()) copies.push(guardian);
     if (!student) noStudentAddress.push(m.name);
-
-    const pair = readTab_('Pairs').filter(function (p) {
-      return p.mentee_id === m.mentee_id && (p.approved === true || p.approved === 'TRUE');
-    })[0];
-    const mentorName = pair ? getMentor_(pair.mentor_id).name : '';
+    const mentorName = getMentor_(pairOf[m.mentee_id].mentor_id).name || '';
 
     MailApp.sendEmail({
       to: to, cc: copies.join(','),
@@ -778,15 +849,18 @@ function emailMenteeLinks() {
         m.name + "'s sessions. If you would rather sign in with a Google account, " +
         'reply and tell us which address to use.</p>')
     });
+    setCell_('Mentees', m._row, 'link_sent', today);
     sent++;
   });
-  notify_(sent + ' student links emailed \u2014 to the student, with the ' +
-    'parent and you copied.' +
+
+  log_('Links', 'Booking links sent to ' + sent + ' student(s)');
+  notify_(sent + ' booking link' + (sent === 1 ? '' : 's') + ' sent \u2014 to the student, ' +
+    'with the parent and you copied. Each is marked in the link_sent column, so ' +
+    'running this again only reaches students who have not had one.' +
     (noStudentAddress.length
-      ? '\n\nNo student address on file, so these went to the parent instead:\n\u2022 ' +
+      ? '\n\nNo student address on file, so these went to the parent:\n\u2022 ' +
         noStudentAddress.join('\n\u2022 ')
-      : '') +
-    (skipped.length ? '\n\nSkipped: ' + skipped.join(', ') : ''));
+      : ''));
   return sent;
 }
 

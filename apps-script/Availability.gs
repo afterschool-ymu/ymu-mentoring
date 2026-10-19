@@ -86,6 +86,10 @@ function buildMonth(siteId, sessionNo, opts) {
         };
       });
       if (opts.onlyPicked) times = times.filter(function (t) { return t.picked; });
+      // The booking views (student and mentor) offer only what sessionOptions
+      // will accept: from tomorrow on. Without this a past day the mentor once
+      // offered still drew as green and tappable, and the tap ended in an error.
+      if (opts.onlyPicked && iso <= today) times = [];
     }
     if (times.length) openDays++;
     pickedCount += times.filter(function (t) { return t.picked; }).length;
@@ -273,9 +277,15 @@ function sessionOptions(pairId, sessionNo, exceptSessionId) {
   const year = CFG.schoolYearStart + sm.y;
   const prefix = year + '-' + (sm.m < 10 ? '0' : '') + sm.m + '-';
   const taken = takenSlots_(pair.site_id, exceptSessionId);
+  // Only from tomorrow on. A mentor may have offered dates that have since
+  // gone by, and booking one sends a real calendar invitation for a day that
+  // is over. Today is excluded too: the day-of coverage check has already
+  // run by the time anyone books, so nobody at the school would be asked.
+  const today = todayIso_();
 
   return availabilityFor(pair.mentor_id, pair.site_id)
     .filter(function (a) { return a.date.indexOf(prefix) === 0; })
+    .filter(function (a) { return a.date > today; })
     .filter(function (a) { return openSlotsOnDate_(site, a.date).indexOf(a.time) >= 0; })
     .sort(function (a, b) { return a.date.localeCompare(b.date) || a.time.localeCompare(b.time); })
     .map(function (a) {
