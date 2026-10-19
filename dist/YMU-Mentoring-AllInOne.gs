@@ -480,7 +480,7 @@ function onOpen() {
     .addItem('Reset a mentor\u2019s availability', 'resetMentorAvailability')
     .addItem('Fill in missing student ids', 'fillMenteeIds')
     .addItem('Create student booking links', 'issueMenteeTokens')
-    .addItem('Email students their links', 'emailMenteeLinks')
+    .addItem('Student links \u2014 test, then choose who to email', 'chooseStudentLinks')
     .addSeparator()
     .addItem('Check the workbook for broken links', 'checkReferences')
     .addItem('Pause / resume automation', 'toggleAutomation')
@@ -1185,37 +1185,10 @@ function installTriggers() {
 
 /** Emails each student (and their guardian) their private booking link. */
 /**
- * Sends each ready student their booking link, once.
- *
- * "Ready" is strict on purpose. A link opens a page; what is on that page
- * depends on the pair, the sessions and the mentor's times, and a family that
- * gets "pick your times" and finds nothing to pick will not try twice. So a
- * student is only sent their link when they are paired, the pair's sessions
- * exist, and their mentor has offered at least one time still to come. Every
- * one left out is named, with the reason, before anything is sent.
- *
- * The first family to book triggers a real calendar invitation, so the
- * calendar is checked here too, rather than in front of that family.
+ * Where each student stands for being sent their link. One list, used both to
+ * draw the chooser and to re-check whatever the chooser sends back.
  */
-function emailMenteeLinks() {
-  const ui = SpreadsheetApp.getUi();
-  if (!CFG.publicStudentUrl && !CFG.webAppUrl) {
-    notify_('Set publicStudentUrl in Config.gs first \u2014 the links are built from it.');
-    return 0;
-  }
-
-  try {
-    Calendar.Calendars.get(calendarId_());
-  } catch (err) {
-    notify_('Nothing sent.\n\nThe calendar cannot be reached, so the first family to pick ' +
-      'a time would see an error instead of a booking:\n\n' + err.message +
-      '\n\nIn the Apps Script editor: Services (+) \u2192 Google Calendar API \u2192 Add. ' +
-      'Then run this again.');
-    return 0;
-  }
-
-  ensureHeader_('Mentees', 'link_sent');
-
+function studentLinkStatus_() {
   const today = todayIso_();
   const on = function (r) { return r.active === true || r.active === 'TRUE'; };
   const pairOf = {};
@@ -1233,58 +1206,131 @@ function emailMenteeLinks() {
     return (e && /@/.test(e)) ? e : '';
   };
 
-  const ready = [], sentBefore = [], unpaired = [], noSessions = [], noTimes = [],
-        noLink = [], noEmail = [];
-  readTab_('Mentees').forEach(function (m) {
-    if (!String(m.name || '').trim() || !on(m)) return;
-    if (String(m.link_sent || '').trim()) { sentBefore.push(m.name); return; }
+  return readTab_('Mentees').filter(function (m) {
+    return String(m.name || '').trim() && on(m);
+  }).map(function (m) {
     const p = pairOf[m.mentee_id];
-    if (!p) { unpaired.push(m.name); return; }
-    if (!m.access_token) { noLink.push(m.name); return; }
-    if (!clean(m.student_email) && !clean(m.guardian_email)) { noEmail.push(m.name); return; }
-    if (!hasSessions[p.pair_id]) { noSessions.push(m.name); return; }
-    if (!futureTimes[p.mentor_id + '|' + p.site_id]) {
-      noTimes.push(m.name + ' (' + getMentor_(p.mentor_id).name + ')');
-      return;
-    }
-    ready.push(m);
+    const mentor = p ? (getMentor_(p.mentor_id).name || '') : '';
+    let reason = '';
+    if (!p) reason = 'Not paired \u2014 the link only shows a waiting screen';
+    else if (!m.access_token) reason = 'No link yet \u2014 run "Create student booking links"';
+    else if (!clean(m.student_email) && !clean(m.guardian_email)) reason = 'No email address on file';
+    else if (!hasSessions[p.pair_id]) reason = 'No sessions yet \u2014 run "Create missing sessions"';
+    else if (!futureTimes[p.mentor_id + '|' + p.site_id]) reason = mentor + ' has offered no times from tomorrow on';
+    return {
+      id: m.mentee_id, row: m._row, name: m.name, mentor: mentor,
+      ready: !reason, reason: reason,
+      sentOn: isoOf_(m.link_sent),
+      url: menteeLink_(m),
+      to: clean(m.student_email) || clean(m.guardian_email),
+      student: clean(m.student_email), guardian: clean(m.guardian_email),
+      mentee: m
+    };
   });
+}
 
-  const list = function (title, arr) {
-    return arr.length ? '\n\n' + title + ' (' + arr.length + '):\n\u2022 ' + arr.join('\n\u2022 ') : '';
-  };
-  const held =
-    list('Not paired yet', unpaired) +
-    list('No sessions yet \u2014 run "Create missing sessions"', noSessions) +
-    list('Their mentor has offered no times still to come', noTimes) +
-    list('No link yet \u2014 run "Create student booking links"', noLink) +
-    list('No email address', noEmail) +
-    list('Already sent', sentBefore);
+/**
+ * The only way a student link is emailed. Nothing is ticked to begin with,
+ * nothing goes until you press Send, and every link can be opened first to
+ * see exactly what that family will see. A student whose page would have
+ * nothing to book cannot be ticked, and the reason is shown instead.
+ */
+function chooseStudentLinks() {
+  const rows = studentLinkStatus_().map(function (r) {
+    return { id: r.id, name: r.name, mentor: r.mentor, ready: r.ready,
+             reason: r.reason, sentOn: r.sentOn, url: r.url, to: r.to };
+  });
+  const data = JSON.stringify(rows).replace(/</g, '\\u003c');
 
-  if (!ready.length) {
-    notify_('Nobody is ready to be sent a link.' + held);
-    return 0;
+  const html =
+    '<style>' +
+    'body{font:13px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;margin:0;padding:16px;color:#16181d}' +
+    'p.lede{margin:0 0 12px;color:#4b5563}' +
+    'table{border-collapse:collapse;width:100%}' +
+    'th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:#6b7280;' +
+    'border-bottom:1px solid #e3e6ea;padding:6px 8px}' +
+    'td{border-bottom:1px solid #f0f1f3;padding:7px 8px;vertical-align:top}' +
+    'tr.off td{color:#9ca3af}' +
+    '.why{font-size:11.5px;color:#9a3412}.ok{font-size:11.5px;color:#166534}.sent{font-size:11.5px;color:#6b7280}' +
+    'a{color:#3b4cca}' +
+    '.bar{position:sticky;bottom:0;background:#fff;padding:12px 0 2px;border-top:1px solid #e3e6ea;margin-top:10px}' +
+    'button{font:inherit;font-weight:600;padding:8px 14px;border-radius:8px;border:0;background:#3b4cca;color:#fff;cursor:pointer}' +
+    'button:disabled{background:#c7cbe8;cursor:default}' +
+    '#msg{margin-left:10px;color:#4b5563}' +
+    '</style>' +
+    '<p class="lede"><b>Nothing is sent from this window until you tick students and press Send.</b> ' +
+    'Use <b>Open</b> to see each family\'s page exactly as they would. A student whose page has ' +
+    'nothing to book cannot be ticked.</p>' +
+    '<table><thead><tr><th></th><th>Student</th><th>Mentor</th><th>Status</th><th></th></tr></thead>' +
+    '<tbody id="rows"></tbody></table>' +
+    '<div class="bar"><button id="go" disabled>Send to 0 selected</button><span id="msg"></span></div>' +
+    '<script>' +
+    'var D = ' + data + ';' +
+    'function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){' +
+    ' return {"&":"&amp;","<":"&lt;",">":"&gt;","\\"":"&quot;"}[c]})}' +
+    'document.getElementById("rows").innerHTML = D.map(function(r,i){' +
+    ' var st = r.ready' +
+    '   ? (r.sentOn ? "<span class=sent>Ready \\u2014 already sent " + esc(r.sentOn) + "</span>" : "<span class=ok>Ready</span>")' +
+    '   : "<span class=why>" + esc(r.reason) + "</span>";' +
+    ' return "<tr class=\\"" + (r.ready ? "" : "off") + "\\">" +' +
+    '  "<td><input type=checkbox data-i=\\"" + i + "\\"" + (r.ready ? "" : " disabled") + "></td>" +' +
+    '  "<td><b>" + esc(r.name) + "</b><div class=sent>" + esc(r.to || "no email") + "</div></td>" +' +
+    '  "<td>" + esc(r.mentor || "\\u2014") + "</td><td>" + st + "</td>" +' +
+    '  "<td>" + (r.url ? "<a href=\\"" + esc(r.url) + "\\" target=_blank rel=noopener>Open</a>" : "") + "</td></tr>";' +
+    '}).join("");' +
+    'function picked(){return Array.prototype.filter.call(document.querySelectorAll("input[type=checkbox]"),' +
+    ' function(b){return b.checked}).map(function(b){return D[+b.getAttribute("data-i")]})}' +
+    'document.getElementById("rows").addEventListener("change", function(){' +
+    ' var n = picked().length, go = document.getElementById("go");' +
+    ' go.disabled = !n; go.textContent = "Send to " + n + " selected"; });' +
+    'document.getElementById("go").onclick = function(){' +
+    ' var p = picked(); if(!p.length) return;' +
+    ' if(!confirm("Email " + p.length + " student" + (p.length>1?"s":"") + ", with their parent and you copied?\\n\\n" +' +
+    '   p.map(function(r){return "\\u2022 " + r.name}).join("\\n") +' +
+    '   "\\n\\nOnce a family picks a time, a calendar invitation goes out to the mentor, " +' +
+    '   "their parents, the student\\u2019s parent and the school contact.")) return;' +
+    ' this.disabled = true; document.getElementById("msg").textContent = "Sending\\u2026";' +
+    ' google.script.run.withSuccessHandler(function(m){ document.getElementById("msg").textContent = m; })' +
+    '  .withFailureHandler(function(e){ document.getElementById("msg").textContent = "Error: " + e.message; })' +
+    '  .apiSendStudentLinks(p.map(function(r){return r.id}));' +
+    '};' +
+    '</script>';
+
+  SpreadsheetApp.getUi().showModalDialog(
+    HtmlService.createHtmlOutput(html).setWidth(760).setHeight(600),
+    'Student links \u2014 test, then choose who to email');
+}
+
+/** Sends to exactly the students chosen. Re-checked here: the dialog is not trusted. */
+function apiSendStudentLinks(ids) {
+  ids = (ids || []).map(String);
+  if (!ids.length) return 'Nobody was selected. Nothing sent.';
+
+  try {
+    Calendar.Calendars.get(calendarId_());
+  } catch (err) {
+    return 'Nothing sent. The calendar cannot be reached, so the first family to book ' +
+      'would see an error: ' + err.message + '. In the Apps Script editor: Services (+) ' +
+      '\u2192 Google Calendar API \u2192 Add, then try again.';
   }
+  ensureHeader_('Mentees', 'link_sent');
 
-  const answer = ui.alert('Send ' + ready.length + ' booking link' + (ready.length === 1 ? '' : 's') + '?',
-    'Each goes to the student, with their parent and you copied:\n\u2022 ' +
-    ready.map(function (m) { return m.name; }).join('\n\u2022 ') +
-    held +
-    '\n\nOnce a family picks a time, a calendar invitation goes straight out to the ' +
-    'mentor, their parents, the student\'s parent and the school contact.',
-    ui.ButtonSet.YES_NO);
-  if (answer !== ui.Button.YES) { notify_('Nothing sent.'); return 0; }
+  const today = todayIso_();
+  const byId = {};
+  studentLinkStatus_().forEach(function (r) { byId[r.id] = r; });
 
   let sent = 0;
-  const noStudentAddress = [];
-  ready.forEach(function (m) {
-    const student = clean(m.student_email);
-    const guardian = clean(m.guardian_email);
-    const to = student || guardian;
+  const refused = [];
+  ids.forEach(function (id) {
+    const r = byId[id];
+    if (!r) { refused.push(id + ' (not found)'); return; }
+    if (!r.ready) { refused.push(r.name + ' (' + r.reason + ')'); return; }
+
+    const m = r.mentee;
+    const to = r.to;
     const copies = [CFG.coordinatorEmail];
-    if (guardian && guardian.toLowerCase() !== to.toLowerCase()) copies.push(guardian);
-    if (!student) noStudentAddress.push(m.name);
-    const mentorName = getMentor_(pairOf[m.mentee_id].mentor_id).name || '';
+    if (r.guardian && r.guardian.toLowerCase() !== to.toLowerCase()) copies.push(r.guardian);
+    const mentorName = r.mentor;
 
     MailApp.sendEmail({
       to: to, cc: copies.join(','),
@@ -1303,19 +1349,13 @@ function emailMenteeLinks() {
         m.name + "'s sessions. If you would rather sign in with a Google account, " +
         'reply and tell us which address to use.</p>')
     });
-    setCell_('Mentees', m._row, 'link_sent', today);
+    setCell_('Mentees', r.row, 'link_sent', today);
     sent++;
   });
 
-  log_('Links', 'Booking links sent to ' + sent + ' student(s)');
-  notify_(sent + ' booking link' + (sent === 1 ? '' : 's') + ' sent \u2014 to the student, ' +
-    'with the parent and you copied. Each is marked in the link_sent column, so ' +
-    'running this again only reaches students who have not had one.' +
-    (noStudentAddress.length
-      ? '\n\nNo student address on file, so these went to the parent:\n\u2022 ' +
-        noStudentAddress.join('\n\u2022 ')
-      : ''));
-  return sent;
+  log_('Links', 'Booking links sent to ' + sent + ' chosen student(s)' +
+       (refused.length ? '; refused ' + refused.length : ''));
+  return sent + ' sent.' + (refused.length ? ' Not sent: ' + refused.join('; ') + '.' : '');
 }
 
 /** Where every mentor stands on the current cycle. */
