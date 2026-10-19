@@ -44,7 +44,7 @@ function takenSlots_(siteId, exceptSessionId) {
     if (!s.date || !s.time) return;
     if (['missed', 'cancelled'].indexOf(s.status) >= 0) return;
     if (!pairsAtSite[s.pair_id]) return;
-    const key = s.date + '#' + s.time;
+    const key = isoOf_(s.date) + '#' + s.time;   // the date cell comes back as a Date
     (out[key] = out[key] || []).push(s.session_id);
   });
   return out;

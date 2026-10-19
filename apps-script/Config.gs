@@ -185,17 +185,54 @@ function ensureHeader_(tabName, field) {
 /** Reads a whole tab as an array of plain objects keyed by header name. */
 function readTab_(name) {
   const sh = sheet_(name);
-  const values = sh.getDataRange().getValues();
+  const range = sh.getDataRange();
+  const values = range.getValues();
   if (values.length < 2) return [];
+  // Sheets turns the text "4:00 PM" into a time of day as it is written, and
+  // hands it back as a Date on 30 Dec 1899. Every comparison in this code is
+  // against the text, so none of them ever matched: a mentor's chosen times
+  // were saved but never found again, and no student saw a single one.
+  // The displayed text is used rather than the Date because converting an
+  // 1899 Date drifts by a few minutes (time zones then were local mean time).
+  let display = null;
   const head = values[0];
   const rows = [];
   for (let i = 1; i < values.length; i++) {
     if (values[i].every(function (c) { return c === '' || c === null; })) continue;
     const o = { _row: i + 1 };
-    head.forEach(function (h, j) { if (h) o[h] = values[i][j]; });
+    head.forEach(function (h, j) {
+      if (!h) return;
+      let v = values[i][j];
+      if (isTimeOfDay_(v)) {
+        if (!display) display = range.getDisplayValues();
+        v = clockLabel_(display[i][j]) || display[i][j];
+      }
+      o[h] = v;
+    });
     rows.push(o);
   }
   return rows;
+}
+
+/** A cell Sheets has stored as a bare time of day: a Date before 1900. */
+function isTimeOfDay_(v) {
+  return Object.prototype.toString.call(v) === '[object Date]' && v.getFullYear() < 1900;
+}
+
+/**
+ * "4:00 PM", "4:00:00 PM" or "16:00:00" -> "4:00 PM", the way CFG.blocks are
+ * labelled. Returns '' for anything it cannot read, so the caller can keep it.
+ */
+function clockLabel_(s) {
+  const m = String(s || '').trim()
+    .match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(a\.?m\.?|p\.?m\.?)?$/i);
+  if (!m) return '';
+  let h = Number(m[1]);
+  const mm = m[2];
+  const mer = (m[3] || '').replace(/\./g, '').toUpperCase();
+  if (mer === 'PM' && h < 12) h += 12;
+  if (mer === 'AM' && h === 12) h = 0;
+  return ((h % 12) || 12) + ':' + mm + ' ' + (h >= 12 ? 'PM' : 'AM');
 }
 
 /** Writes one field back to one row. */
@@ -246,7 +283,10 @@ function todayIso_() {
 }
 
 function isoParts_(iso) {
-  const p = String(iso).split('-').map(Number);
+  // A date cell comes back from the sheet as a Date, not as text. Without
+  // this, daysBetween_ and prettyDate_ produced NaN for every booked session,
+  // so no reminder would ever have found its day.
+  const p = isoOf_(iso).split('-').map(Number);
   return { y: p[0], m: p[1], d: p[2] };
 }
 
